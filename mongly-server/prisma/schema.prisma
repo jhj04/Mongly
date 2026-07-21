@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // 런타임(풀링) — Neon은 -pooler URL
+  directUrl = env("DIRECT_URL") // 마이그레이션 전용(직결)
+}
+
+model User {
+  id            String       @id @default(cuid())
+  loginId       String       @unique // 2~16자, 한글/영문/숫자
+  passwordHash  String
+  termsAgreedAt DateTime // 회원가입 약관 동의 시각
+  createdAt     DateTime     @default(now())
+  jars          Jar[]
+  friendships   Friendship[] @relation("FriendshipOwner")
+  friendOf      Friendship[] @relation("FriendshipTarget")
+}
+
+// 감정 마스터 — 시드로 10종, id = sortOrder = 1~10 고정
+model Emotion {
+  id          Int          @id
+  name        String       @unique
+  colorHex    String // 프론트가 색 조합에 사용할 기준색
+  sortOrder   Int
+  isActive    Boolean      @default(true)
+  jarEmotions JarEmotion[]
+}
+
+// 유리병 = 하루의 감정 기록
+model Jar {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordDate DateTime     @db.Date // KST 기준 날짜 — 반드시 getKstToday()로만 생성
+  createdAt  DateTime     @default(now())
+  emotions   JarEmotion[]
+
+  @@unique([userId, recordDate]) // 하루 1병
+}
+
+// 유리병에 담긴 감정 — 순서 무관, 같은 감정은 count로 집계 (병당 합계 1~7)
+model JarEmotion {
+  jarId     String
+  jar       Jar     @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  emotionId Int
+  emotion   Emotion @relation(fields: [emotionId], references: [id])
+  count     Int
+
+  @@id([jarId, emotionId])
+}
+
+// 친구 — 추가 시 쌍방 2행, 유저당 최대 10명
+model Friendship {
+  userId    String
+  user      User     @relation("FriendshipOwner", fields: [userId], references: [id], onDelete: Cascade)
+  friendId  String
+  friend    User     @relation("FriendshipTarget", fields: [friendId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, friendId])
+}

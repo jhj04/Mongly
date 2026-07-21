@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mongly-db
+    environment:
+      POSTGRES_USER: mongly
+      POSTGRES_PASSWORD: mongly
+      POSTGRES_DB: mongly
+    ports:
+      - "5432:5432"
+    volumes:
+      - mongly-db-data:/var/lib/postgresql/data
+
+volumes:
+  mongly-db-data:
