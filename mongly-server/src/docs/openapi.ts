@@ -11,7 +11,7 @@ export const openapi = {
     title: "Mongly API",
     version: "0.2.0",
     description:
-      "몽글리 감정 기록 서비스 백엔드. 에러 포맷: { error: { code, message, details? } }. " +
+      "몽글리 백엔드. 에러 포맷: { error: { code, message, details? } }. " +
       "인증: httpOnly 쿠키(mongly_token) — 프론트는 Next rewrites 프록시 경유로 자동 전송. " +
       "상태 변경 요청은 Content-Type: application/json 필수(아니면 415).",
   },
@@ -109,6 +109,88 @@ export const openapi = {
         responses: {
           "200": { description: "{ ok: true } + 쿠키 삭제" },
           "400": { description: "비밀번호 불일치 (WRONG_PASSWORD)" },
+        },
+      },
+    },
+    "/api/emotions": {
+      get: {
+        summary: "감정 마스터 10종 — 팔레트 렌더링·색 조합의 원천 데이터",
+        responses: {
+          "200": {
+            description: "감정 목록",
+            content: {
+              "application/json": {
+                example: { emotions: [{ id: 1, name: "분노", colorHex: "#F05B5B", sortOrder: 1 }] },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/jars": {
+      post: {
+        summary: "완료하기 🔒 — 감정 합계 1~7개(중복은 count), recordDate는 서버가 KST로 계산",
+        requestBody: {
+          content: {
+            "application/json": {
+              example: { emotions: [{ emotionId: 6, count: 1 }, { emotionId: 1, count: 2 }] },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "유리병 생성",
+            content: {
+              "application/json": {
+                example: {
+                  id: "clx8f...",
+                  recordDate: "2026-09-14",
+                  dominantEmotionId: 1,
+                  emotions: [
+                    { emotionId: 1, name: "분노", colorHex: "#F05B5B", count: 2 },
+                    { emotionId: 6, name: "슬픔", colorHex: "#4966B6", count: 1 },
+                  ],
+                },
+              },
+            },
+          },
+          "400": { description: "형식 오류(VALIDATION) / 없는 감정(INVALID_EMOTION)" },
+          "409": {
+            description:
+              "오늘 이미 완성(JAR_ALREADY_TODAY) / 서재 가득(JAR_LIMIT — details.jars에 현재 7개 목록)",
+          },
+        },
+      },
+      get: {
+        summary: "서재 🔒 — 내 유리병 목록 (최대 7개, 날짜 내림차순, 감정 포함)",
+        responses: {
+          "200": { description: "{ jars: [유리병...] }" },
+        },
+      },
+    },
+    "/api/jars/today": {
+      get: {
+        summary: "오늘(KST)의 유리병 🔒 — 몽글리 탭 진입 시 확인, 없으면 null",
+        responses: { "200": { description: "{ jar: 유리병 | null }" } },
+      },
+    },
+    "/api/jars/{id}": {
+      get: {
+        summary: "유리병 상세 🔒 — 캐릭터 보기/감정 구성 보기. 본인 또는 친구만",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": { description: "유리병 (dominantEmotionId 포함)" },
+          "403": { description: "친구 아님 (FORBIDDEN)" },
+          "404": { description: "없는 유리병 (JAR_NOT_FOUND)" },
+        },
+      },
+      delete: {
+        summary: "삭제하기 🔒 — 본인만",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": { description: "{ ok: true }" },
+          "403": { description: "본인 아님 (FORBIDDEN)" },
+          "404": { description: "없는 유리병 (JAR_NOT_FOUND)" },
         },
       },
     },

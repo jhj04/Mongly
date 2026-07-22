@@ -5,7 +5,7 @@ import { verifyAuthToken } from "../lib/jwt";
 import { prisma } from "../lib/prisma";
 
 // 매 요청 사용자 존재를 확인한다 — 탈퇴한 유저의 살아있는 토큰이 통과해
-// FK 오류 500을 내는 것을 방지 (계획서 §7). 이 규모에선 조회 비용 무시 가능.
+// FK 오류 500을 내는 것을 방지. 이 규모에선 조회 비용 무시 가능.
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const token: unknown = req.cookies?.[AUTH_COOKIE];

@@ -5,7 +5,9 @@ import { openapi } from "./docs/openapi";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requireJson } from "./middlewares/requireJson";
 import { authRouter } from "./routes/auth";
+import { emotionsRouter } from "./routes/emotions";
 import { healthRouter } from "./routes/health";
+import { jarsRouter } from "./routes/jars";
 import { usersRouter } from "./routes/users";
 
 export function createApp() {
@@ -23,6 +25,8 @@ export function createApp() {
   app.use("/api", healthRouter);
   app.use("/api", authRouter);
   app.use("/api", usersRouter);
+  app.use("/api", emotionsRouter);
+  app.use("/api", jarsRouter);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapi));
 
   app.use(notFoundHandler);
