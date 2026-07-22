@@ -1,65 +1,80 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import TextField from "@/components/TextField";
+import Button from "@/components/Button";
+
+type Mode = "login" | "signup";
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("login");
+
+  const [id, setId] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+
+  const handleLogin = () => {
+    router.push("/home");
+  };
+
+  const handleSignup = () => {
+    setMode("login");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main className="flex flex-1 flex-col items-end justify-center pl-6 pr-[16%]">
+      <div
+        className="w-full max-w-md flex flex-col items-center gap-20 px-8 py-10 rounded-[2rem]"
+        style={{
+          background: "rgba(255, 255, 255, 0.15)",
+          backdropFilter: "blur(20px)",
+          boxShadow: "2px 2px 8px rgba(184, 110, 67, 0.6)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+        }}
+      >
+        <h1 className="font-point text-2xl text-primary-900">
+          {mode === "login" ? "로그인" : "회원가입"}
+        </h1>
+
+        <div className="w-full flex flex-col gap-3">
+          <TextField label="아이디" type="text" value={id} onChange={setId} />
+          <TextField label="비밀번호" type="password" value={password} onChange={setPassword} />
+          {mode === "signup" && (
+            <TextField
+              label="비밀번호 확인"
+              type="password"
+              value={passwordConfirm}
+              onChange={setPasswordConfirm}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
         </div>
-      </main>
-    </div>
+
+        <div className="w-full flex flex-col items-center gap-6">
+          {mode === "login" ? (
+            <>
+              <Button label="로그인" variant="filled" onClick={handleLogin} className="w-full" />
+              <button
+                className="font-sans text-sm text-accent hover:text-primary-900 transition-colors"
+                onClick={() => setMode("signup")}
+              >
+                회원가입
+              </button>
+            </>
+          ) : (
+            <>
+              <Button label="회원가입" variant="filled" onClick={handleSignup} className="w-full" />
+              <button
+                className="font-sans text-sm text-accent hover:text-primary-900 transition-colors"
+                onClick={() => setMode("login")}
+              >
+                로그인
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
