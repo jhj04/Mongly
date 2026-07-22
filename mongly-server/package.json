@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:int": "INT=1 vitest run",
     "test:watch": "vitest",
     "db:up": "docker compose up -d",
     "db:migrate": "prisma migrate dev",
