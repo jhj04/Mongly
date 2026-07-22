@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import { requireJson } from "./middlewares/requireJson";
 import { authRouter } from "./routes/auth";
 import { emotionsRouter } from "./routes/emotions";
+import { friendsRouter } from "./routes/friends";
 import { healthRouter } from "./routes/health";
 import { jarsRouter } from "./routes/jars";
 import { usersRouter } from "./routes/users";
@@ -27,6 +28,7 @@ export function createApp() {
   app.use("/api", usersRouter);
   app.use("/api", emotionsRouter);
   app.use("/api", jarsRouter);
+  app.use("/api", friendsRouter);
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapi));
 
   app.use(notFoundHandler);

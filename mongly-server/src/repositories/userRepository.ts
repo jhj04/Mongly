@@ -21,7 +21,7 @@ export const userRepository = {
     return prisma.user.update({ where: { id }, data: { passwordHash } });
   },
 
-  // Jar·JarEmotion·Friendship(양방향)은 스키마의 onDelete: Cascade가 정리 (계획서 §4)
+  // Jar·JarEmotion·Friendship(양방향)은 스키마의 onDelete: Cascade가 정리
   deleteById(id: string) {
     return prisma.user.delete({ where: { id } });
   },

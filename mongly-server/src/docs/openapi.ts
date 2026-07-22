@@ -194,5 +194,53 @@ export const openapi = {
         },
       },
     },
+    "/api/friends": {
+      post: {
+        summary: "친구 추가 🔒 — 정확한 아이디 입력, 쌍방 즉시 성립 (요청/수락 없음)",
+        requestBody: { content: { "application/json": { example: { friendLoginId: "허수현" } } } },
+        responses: {
+          "201": { description: "성립", content: { "application/json": { example: { loginId: "허수현" } } } },
+          "400": { description: "자기 자신 (SELF_FRIEND)" },
+          "404": { description: "없는 아이디 (USER_NOT_FOUND)" },
+          "409": {
+            description: "이미 친구 (ALREADY_FRIEND) / 내 한도 초과 (FRIEND_LIMIT_ME) / 상대 한도 초과 (FRIEND_LIMIT_TARGET) — 최대 10명",
+          },
+        },
+      },
+      get: {
+        summary: "친구 목록 🔒 — 최대 10명이라 페이지네이션 없음, total은 설정 '9/10' 카운터용",
+        responses: {
+          "200": {
+            description: "목록",
+            content: {
+              "application/json": {
+                example: { total: 2, friends: [{ loginId: "허수현", createdAt: "2026-09-01T09:00:00Z" }] },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        summary: "친구 다중 삭제 🔒 — 전체 성공/전체 실패, 쌍방 관계 해제",
+        requestBody: {
+          content: { "application/json": { example: { friendLoginIds: ["허수현", "7월제철음식"] } } },
+        },
+        responses: {
+          "200": { description: "삭제 완료", content: { "application/json": { example: { deleted: 2 } } } },
+          "404": { description: "목록에 없는 아이디 포함 (FRIEND_NOT_FOUND) — 아무것도 삭제되지 않음" },
+        },
+      },
+    },
+    "/api/friends/{loginId}/jars": {
+      get: {
+        summary: "친구의 서재 🔒 — 친구만. 한글 아이디는 encodeURIComponent 필수",
+        parameters: [{ name: "loginId", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          "200": { description: "{ owner, jars: [유리병...] }" },
+          "403": { description: "친구 아님 (FORBIDDEN)" },
+          "404": { description: "없는 아이디 (USER_NOT_FOUND)" },
+        },
+      },
+    },
   },
 } as const;

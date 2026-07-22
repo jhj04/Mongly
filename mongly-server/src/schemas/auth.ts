@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// 아이디 정책: 2~16자, 한글/영문/숫자 (계획서 §7 — 피그마 "9/16" 카운터 기준)
+// 아이디 정책: 2~16자, 한글/영문/숫자
 export const loginIdSchema = z
   .string()
   .regex(/^[가-힣a-zA-Z0-9]{2,16}$/, "아이디는 2~16자의 한글/영문/숫자만 가능해요.");
@@ -25,7 +25,7 @@ export const loginSchema = z.object({
 
 export const updateLoginIdSchema = z.object({ loginId: loginIdSchema });
 
-// currentPassword는 열린 문제 ① 결정 대기 — 보안상 필수로 구현해 두고 프론트에 필드 추가 요청 (계획서 §5)
+// currentPassword는 열린 문제 ① 결정 대기 — 보안상 필수로 구현해 두고 프론트에 필드 추가 요청
 export const updatePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: passwordSchema,
