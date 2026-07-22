@@ -9,8 +9,17 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: #FCD2B4;
+  --color-primary-900: #8A5130;
+  --color-primary-800: #B86E43;
+  --color-secondary: #F6E7D7;
+  --color-brown-600: #B07A52;
+  --color-accent: #D98F60;
+  --color-danger: #E56A6A;
+  --color-taupe: #8B7A65;
+  --color-taupe-300: #C9BBA8;
   --font-sans: var(--font-pretendard);
   --font-point: var(--font-point);
+  --shadow-drop: 2px 2px 8px rgb(184 110 67 / 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,7 +30,6 @@
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-pretendard), Arial, Helvetica, sans-serif;
 }
