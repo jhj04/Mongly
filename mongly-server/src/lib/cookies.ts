@@ -2,7 +2,7 @@ import { Response } from "express";
 
 export const AUTH_COOKIE = "mongly_token";
 
-// Next rewrites 프록시로 first-party가 되므로 SameSite=Lax로 충분 (계획서 §7)
+// Next rewrites 프록시로 first-party가 되므로 SameSite=Lax로 충분
 // localStorage 저장 금지 — 반드시 httpOnly 쿠키로만
 export function setAuthCookie(res: Response, token: string) {
   res.cookie(AUTH_COOKIE, token, {

@@ -37,11 +37,11 @@ friendsRouter.delete(
   }),
 );
 
-// 친구 탭 — 친구의 유리병 선반 (한글 아이디는 프론트가 encodeURIComponent, Express가 자동 디코딩)
+// 친구 탭 선반 — 친구마다 최신 유리병 1개씩 (유리병 클릭 → GET /jars/:id로 캐릭터 보기)
 friendsRouter.get(
-  "/friends/:loginId/jars",
+  "/friends/jars",
   friendJarsLimiter,
   asyncHandler(async (req, res) => {
-    res.json(await friendService.getFriendJars(req.user!.id, req.params.loginId));
+    res.json(await friendService.getFriendsLatestJars(req.user!.id));
   }),
 );

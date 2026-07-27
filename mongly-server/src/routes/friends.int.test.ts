@@ -56,28 +56,35 @@ describe("친구 추가", () => {
   });
 });
 
-describe("친구 서재 열람", () => {
-  it("친구의 유리병 목록 { owner, jars } — 한글 아이디 URL 인코딩 경로", async () => {
-    await b.post("/api/jars").send({ emotions: [{ emotionId: 2, count: 1 }] });
+describe("친구 탭 — 친구별 최신 유리병 1개", () => {
+  it("GET /friends/jars — 친구마다 최신 유리병, 없는 친구는 null", async () => {
+    // B: 어제 유리병(직접 삽입) + 오늘 유리병(API) 2개 → "최신"이 오늘 것인지 검증
+    const bRow = await prisma.user.findUnique({ where: { loginId: uidB } });
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await prisma.jar.create({
+      data: {
+        userId: bRow!.id,
+        recordDate: new Date(`${yesterday}T00:00:00.000Z`),
+        emotions: { create: [{ emotionId: 10, count: 1 }] },
+      },
+    });
+    const todayJar = await b.post("/api/jars").send({ emotions: [{ emotionId: 2, count: 1 }] });
 
-    const res = await a.get(`/api/friends/${encodeURIComponent(uidB)}/jars`);
+    await a.post("/api/friends").send({ friendLoginId: uidC }); // C는 유리병 없음
+
+    const res = await a.get("/api/friends/jars");
     expect(res.status).toBe(200);
-    expect(res.body.owner).toBe(uidB);
-    expect(res.body.jars).toHaveLength(1);
-    expect(res.body.jars[0].emotions[0]).toHaveProperty("colorHex");
-  });
+    expect(res.body.friends).toHaveLength(2);
 
-  it("친구가 아니면 403", async () => {
-    const res = await c.get(`/api/friends/${encodeURIComponent(uidB)}/jars`);
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("FORBIDDEN");
+    const byLoginId = Object.fromEntries(res.body.friends.map((f: any) => [f.loginId, f.jar]));
+    expect(byLoginId[uidB].id).toBe(todayJar.body.id); // 어제 것이 아닌 오늘(최신) 것
+    expect(byLoginId[uidB].emotions[0]).toHaveProperty("colorHex");
+    expect(byLoginId[uidC]).toBeNull(); // 완성 안 한 친구 → 비활성 슬롯
   });
 });
 
 describe("친구 다중 삭제", () => {
   it("전체 성공 — { deleted: n }, 쌍방 해제", async () => {
-    await a.post("/api/friends").send({ friendLoginId: uidC });
-
     const res = await a.delete("/api/friends").send({ friendLoginIds: [uidB, uidC] });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ deleted: 2 });
@@ -87,9 +94,9 @@ describe("친구 다중 삭제", () => {
     // 상대 쪽 행도 함께 삭제됨
     const bList = await b.get("/api/friends");
     expect(bList.body.total).toBe(0);
-    // 해제 후 서재 접근 403
-    const jars = await a.get(`/api/friends/${encodeURIComponent(uidB)}/jars`);
-    expect(jars.status).toBe(403);
+    // 해제 후 친구 탭 선반도 빈 배열
+    const shelf = await a.get("/api/friends/jars");
+    expect(shelf.body.friends).toHaveLength(0);
   });
 
   it("목록에 없는 아이디가 섞이면 전체 실패 (부분 삭제 없음)", async () => {

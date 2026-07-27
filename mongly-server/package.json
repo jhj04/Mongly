@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "description": "Mongly 백엔드 API",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

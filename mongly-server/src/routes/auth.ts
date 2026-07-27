@@ -9,7 +9,7 @@ import { authService } from "../services/authService";
 
 export const authRouter = Router();
 
-// 성공 201 + 자동 로그인(쿠키 즉시 발급) — 가입 직후 재로그인 생략 (계획서 §5)
+// 성공 201 + 자동 로그인(쿠키 즉시 발급) — 가입 직후 재로그인 생략
 authRouter.post(
   "/auth/signup",
   signupLimiter,

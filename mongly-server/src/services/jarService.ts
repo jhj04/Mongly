@@ -2,6 +2,7 @@ import { AppError } from "../lib/errors";
 import { prisma } from "../lib/prisma";
 import { isUniqueViolation } from "../lib/prismaError";
 import { emotionRepository } from "../repositories/emotionRepository";
+import { friendRepository } from "../repositories/friendRepository";
 import { JarWithEmotions, jarRepository, withEmotions } from "../repositories/jarRepository";
 import { dominantEmotionId } from "../utils/dominant";
 import { getKstToday, kstDateToDb } from "../utils/kst";
@@ -101,9 +102,7 @@ export const jarService = {
     if (!jar) throw new AppError(404, "JAR_NOT_FOUND", "존재하지 않는 유리병이에요.");
 
     if (jar.userId !== viewerId) {
-      const friendship = await prisma.friendship.findUnique({
-        where: { userId_friendId: { userId: viewerId, friendId: jar.userId } },
-      });
+      const friendship = await friendRepository.find(viewerId, jar.userId);
       if (!friendship) throw new AppError(403, "FORBIDDEN", "친구의 유리병만 볼 수 있어요.");
     }
     return toJarResponse(jar);

@@ -19,6 +19,15 @@ export const jarRepository = {
     });
   },
 
+  // 친구 탭용 — 여러 유저의 유리병을 최신순으로 (유저당 최대 7개 × 친구 10명 = 최대 70행이라 전량 조회로 충분)
+  findManyByUsers(userIds: string[]) {
+    return prisma.jar.findMany({
+      where: { userId: { in: userIds } },
+      include: withEmotions,
+      orderBy: { recordDate: "desc" },
+    });
+  },
+
   findByUserAndDate(userId: string, recordDate: Date) {
     return prisma.jar.findUnique({
       where: { userId_recordDate: { userId, recordDate } },

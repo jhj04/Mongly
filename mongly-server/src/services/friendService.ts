@@ -87,17 +87,23 @@ export const friendService = {
     return { deleted: targetIds.length };
   },
 
-  // 친구의 서재 — 친구 관계 검증 후 유리병 목록 (계획서 §5: { owner, jars } 래핑)
-  async getFriendJars(viewerId: string, friendLoginId: string) {
-    const target = await userRepository.findByLoginId(friendLoginId);
-    if (!target) throw new AppError(404, "USER_NOT_FOUND", "존재하지 않는 아이디예요.");
+  // 친구 탭 선반 — 친구마다 "가장 최근" 유리병 1개씩.
+  // 유리병이 없는 친구는 jar: null → 프론트가 비활성(완성 안 한 친구) 슬롯으로 렌더
+  async getFriendsLatestJars(userId: string) {
+    const rows = await friendRepository.listByUser(userId);
+    const jars = await jarRepository.findManyByUsers(rows.map((r) => r.friendId));
 
-    if (target.id !== viewerId) {
-      const friendship = await friendRepository.find(viewerId, target.id);
-      if (!friendship) throw new AppError(403, "FORBIDDEN", "친구의 서재만 볼 수 있어요.");
+    // 최신순 정렬 상태이므로 유저별 처음 만나는 유리병이 최신
+    const latestByUser = new Map<string, (typeof jars)[number]>();
+    for (const jar of jars) {
+      if (!latestByUser.has(jar.userId)) latestByUser.set(jar.userId, jar);
     }
 
-    const jars = await jarRepository.findManyByUser(target.id);
-    return { owner: target.loginId, jars: jars.map(toJarResponse) };
+    return {
+      friends: rows.map((r) => {
+        const latest = latestByUser.get(r.friendId);
+        return { loginId: r.friend.loginId, jar: latest ? toJarResponse(latest) : null };
+      }),
+    };
   },
 };
