@@ -11,15 +11,16 @@
   --color-primary: #FCD2B4;
   --color-primary-900: #8A5130;
   --color-primary-800: #B86E43;
+  --color-primary-700: #D98F60;
   --color-secondary: #F6E7D7;
-  --color-brown-600: #B07A52;
   --color-accent: #D98F60;
   --color-danger: #E56A6A;
-  --color-taupe: #8B7A65;
   --color-taupe-300: #C9BBA8;
   --font-sans: var(--font-pretendard);
   --font-point: var(--font-point);
   --shadow-drop: 2px 2px 8px rgb(184 110 67 / 0.6);
+  --shadow-surface: 2px 2px 8px rgb(184 110 67 / 0.6), inset 0 1px 2px rgb(255 255 255 / 0.4);
+  --shadow-glass: 2px 2px 8px rgb(184 110 67 / 0.6), inset 0 1px 2px rgb(255 255 255 / 0.25), inset 2px 2px 8px rgb(36 33 31 / 0.6);
 }
 
 @media (prefers-color-scheme: dark) {
