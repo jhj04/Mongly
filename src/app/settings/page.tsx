@@ -5,7 +5,6 @@ import TextField from "@/components/TextField";
 import Button from "@/components/Button";
 import CircleCheckbox from "@/components/CircleCheckbox";
 import { DUMMY_USER_ID, DUMMY_FRIENDS } from "@/data/dummy";
-import { glassShadow } from "@/lib/styles";
 
 const INFO_ITEMS = ["버전", "업데이트 내역", "이용약관", "문의하기"];
 
@@ -109,7 +108,7 @@ export default function SettingsPage() {
           {INFO_ITEMS.map((item) => (
             <button
               key={item}
-              className="text-left py-3 font-point text-sm text-primary-900 hover:text-primary-900 transition-colors border-b border-black/5 last:border-none"
+              className="text-left py-3 font-point text-lg text-primary-900 hover:text-primary-900 transition-colors border-b border-black/5 last:border-none"
             >
               {item}
             </button>
