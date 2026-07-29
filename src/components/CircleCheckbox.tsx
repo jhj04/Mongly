@@ -20,8 +20,8 @@ export default function CircleCheckbox({
           onChange={(e) => onChange(e.target.checked)}
           className="peer absolute inset-0 opacity-0 cursor-pointer"
         />
-        <span className="absolute inset-0 rounded-full border-2 border-taupe-300 peer-checked:border-brown-600 transition-colors" />
-        <span className="absolute inset-1 rounded-full bg-brown-600 scale-0 peer-checked:scale-100 transition-transform" />
+        <span className="absolute inset-0 rounded-full border-2 border-taupe-300 peer-checked:border-primary-700 transition-colors" />
+        <span className="absolute inset-1 rounded-full bg-primary-700 scale-0 peer-checked:scale-100 transition-transform" />
       </span>
       <span className="font-point text-sm text-primary-900 truncate">{label}</span>
     </label>

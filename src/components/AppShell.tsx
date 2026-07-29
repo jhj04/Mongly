@@ -11,7 +11,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <body
-      className={`min-h-dvh flex flex-col bg-cover ${
+      className={`min-h-dvh flex flex-col bg-cover bg-fixed bg-no-repeat ${
         isStudy || isFriends
           ? "bg-[url('/images/study_screen.png')]"
           : "bg-[url('/images/home_screen.png')]"

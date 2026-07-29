@@ -25,8 +25,8 @@ export default function Header() {
             href={item.href}
             className={`relative z-10 flex-1 py-2 mx-5 text-center rounded-full text-md transition-all font-point ${
               pathname === item.href
-                ? "bg-primary text-primary-900 font-bold shadow-drop"
-                : "text-primary-900"
+                ? "bg-primary text-primary-900 text-lg shadow-drop"
+                : "text-primary-900 text-lg"
             }`}
           >
             {item.label}
