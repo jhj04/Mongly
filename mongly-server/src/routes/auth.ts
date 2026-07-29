@@ -17,7 +17,7 @@ authRouter.post(
     const body = signupSchema.parse(req.body);
     const user = await authService.signup(body);
     setAuthCookie(res, signAuthToken(user.id));
-    res.status(201).json({ loginId: user.loginId });
+    res.status(201).json({ email: user.email, loginId: user.loginId });
   }),
 );
 
@@ -28,7 +28,7 @@ authRouter.post(
     const body = loginSchema.parse(req.body);
     const user = await authService.login(body);
     setAuthCookie(res, signAuthToken(user.id));
-    res.json({ loginId: user.loginId });
+    res.json({ email: user.email, loginId: user.loginId });
   }),
 );
 
@@ -39,5 +39,5 @@ authRouter.post("/auth/logout", (_req, res) => {
 });
 
 authRouter.get("/auth/me", requireAuth, (req, res) => {
-  res.json({ loginId: req.user!.loginId });
+  res.json({ email: req.user!.email, loginId: req.user!.loginId });
 });

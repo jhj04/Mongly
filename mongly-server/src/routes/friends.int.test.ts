@@ -17,11 +17,25 @@ const a = request.agent(app);
 const b = request.agent(app);
 const c = request.agent(app);
 
+const signup = (agent: ReturnType<typeof request.agent>, nick: string, tag: string) =>
+  agent.post("/api/auth/signup").send({
+    email: `${uid}${tag}@example.com`,
+    loginId: nick,
+    password: PW,
+    termsAgreed: true,
+  });
+
+// 유리병 완성 = 드래그 후 바디 없는 완성
+async function makeJar(agent: ReturnType<typeof request.agent>, emotionId: number) {
+  await agent.post("/api/jars/draft/emotions").send({ emotionId });
+  return agent.post("/api/jars").send();
+}
+
 beforeAll(async () => {
   await prisma.$queryRaw`SELECT 1`;
-  await a.post("/api/auth/signup").send({ loginId: uidA, password: PW, termsAgreed: true });
-  await b.post("/api/auth/signup").send({ loginId: uidB, password: PW, termsAgreed: true });
-  await c.post("/api/auth/signup").send({ loginId: uidC, password: PW, termsAgreed: true });
+  await signup(a, uidA, "a");
+  await signup(b, uidB, "b");
+  await signup(c, uidC, "c");
 });
 
 afterAll(async () => {
@@ -68,7 +82,7 @@ describe("친구 탭 — 친구별 최신 유리병 1개", () => {
         emotions: { create: [{ emotionId: 10, count: 1 }] },
       },
     });
-    const todayJar = await b.post("/api/jars").send({ emotions: [{ emotionId: 2, count: 1 }] });
+    const todayJar = await makeJar(b, 2);
 
     await a.post("/api/friends").send({ friendLoginId: uidC }); // C는 유리병 없음
 
@@ -118,7 +132,12 @@ describe("친구 10명 제한", () => {
     const dummies = await Promise.all(
       Array.from({ length: 9 }, (_, i) =>
         prisma.user.create({
-          data: { loginId: `${uid}더미${i}`, passwordHash: "x", termsAgreedAt: new Date() },
+          data: {
+            email: `${uid}dummy${i}@example.com`,
+            loginId: `${uid}더미${i}`,
+            passwordHash: "x",
+            termsAgreedAt: new Date(),
+          },
         }),
       ),
     );

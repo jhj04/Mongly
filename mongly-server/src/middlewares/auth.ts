@@ -21,7 +21,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, loginId: true },
+      select: { id: true, loginId: true, email: true },
     });
     if (!user) {
       clearAuthCookie(res); // 탈퇴자 토큰 — 쿠키도 정리
