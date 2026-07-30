@@ -1,26 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TextField from "@/components/TextField";
 import Button from "@/components/Button";
+import Checkbox from "@/components/Checkbox";
+import { useLogin, useSignup } from "@/hooks/useAuth";
+import { useSnackbar } from "@/components/SnackbarProvider";
 
 type Mode = "login" | "signup";
+
+const REMEMBERED_EMAIL_KEY = "mongly:rememberedEmail";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
+  const { login, isLoading } = useLogin();
+  const { signup, isLoading: isSigningUp } = useSignup();
+  const { showSnackbar } = useSnackbar();
 
-  const [id, setId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
 
-  const handleLogin = () => {
-    router.push("/home");
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (saved) {
+      setEmail(saved);
+      setRememberEmail(true);
+    }
+  }, []);
+
+  const handleLogin = async () => {
+    const { user, error } = await login({ email, password });
+    if (user) {
+      if (rememberEmail) {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
+      showSnackbar("로그인 되었습니다.");
+      router.push("/home");
+    } else if (error) {
+      showSnackbar(error.message);
+    }
   };
 
-  const handleSignup = () => {
-    setMode("login");
+  const handleSignup = async () => {
+    if (password !== passwordConfirm) {
+      showSnackbar("비밀번호가 일치하지 않아요.");
+      return;
+    }
+    if (!agreedToTerms) {
+      showSnackbar("약관에 동의해주세요.");
+      return;
+    }
+
+    const { user, error } = await signup({
+      email,
+      loginId: nickname,
+      password,
+      termsAgreed: agreedToTerms,
+    });
+    if (user) {
+      showSnackbar("회원가입이 완료되었습니다.");
+      router.push("/home");
+    } else if (error) {
+      showSnackbar(error.message);
+    }
   };
 
   return (
@@ -34,27 +84,48 @@ export default function OnboardingPage() {
           border: "1px solid rgba(255, 255, 255, 0.3)",
         }}
       >
-        <h1 className="font-point text-2xl text-primary-900">
-          {mode === "login" ? "로그인" : "회원가입"}
+        <h1 className="font-point text-5xl text-primary-800">
+          {mode === "login" ? "몽글리" : "회원가입"}
         </h1>
 
         <div className="w-full flex flex-col gap-3">
-          <TextField label="아이디" type="text" value={id} onChange={setId} />
+          <TextField label="이메일" type="text" value={email} onChange={setEmail} />
           <TextField label="비밀번호" type="password" value={password} onChange={setPassword} />
           {mode === "signup" && (
-            <TextField
-              label="비밀번호 확인"
-              type="password"
-              value={passwordConfirm}
-              onChange={setPasswordConfirm}
-            />
+            <>
+              <TextField
+                label="비밀번호 확인"
+                type="password"
+                value={passwordConfirm}
+                onChange={setPasswordConfirm}
+              />
+              <TextField label="닉네임" type="text" value={nickname} onChange={setNickname} />
+            </>
+          )}
+          {mode === "login" && (
+            <div className="flex items-center justify-between px-1">
+              <Checkbox label="이메일 기억하기" checked={rememberEmail} onChange={setRememberEmail} />
+              <button
+                type="button"
+                className="font-sans text-[15px] font-regular text-black/25 hover:text-primary-900 transition-colors"
+                onClick={() => {}}
+              >
+                비밀번호 찾기
+              </button>
+            </div>
           )}
         </div>
 
         <div className="w-full flex flex-col items-center gap-6">
           {mode === "login" ? (
             <>
-              <Button label="로그인" variant="filled" onClick={handleLogin} className="w-full" />
+              <Button
+                label={isLoading ? "로그인 중..." : "로그인하기"}
+                variant="filled"
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="w-full !font-sans !text-sm !py-4"
+              />
               <button
                 className="font-sans text-sm text-accent hover:text-primary-900 transition-colors"
                 onClick={() => setMode("signup")}
@@ -64,7 +135,18 @@ export default function OnboardingPage() {
             </>
           ) : (
             <>
-              <Button label="회원가입" variant="filled" onClick={handleSignup} className="w-full" />
+              <Button
+                label={isSigningUp ? "가입 중..." : "회원가입"}
+                variant="filled"
+                onClick={handleSignup}
+                disabled={isSigningUp}
+                className="w-full !font-sans !text-sm !py-4"
+              />
+              <Checkbox
+                label="이용약관에 동의합니다"
+                checked={agreedToTerms}
+                onChange={setAgreedToTerms}
+              />
               <button
                 className="font-sans text-sm text-accent hover:text-primary-900 transition-colors"
                 onClick={() => setMode("login")}

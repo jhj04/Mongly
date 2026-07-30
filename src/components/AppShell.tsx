@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Header from "./Header";
+import SnackbarProvider from "./SnackbarProvider";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -11,15 +12,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <body
-      className={`min-h-dvh flex flex-col bg-cover bg-fixed bg-no-repeat ${
-        isStudy || isFriends
+      className={`min-h-dvh flex flex-col bg-cover bg-no-repeat sm:bg-fixed ${
+        isOnboarding
+          ? "bg-[url('/images/login_screen.png')]"
+          : isStudy || isFriends
           ? "bg-[url('/images/study_screen.png')]"
           : "bg-[url('/images/home_screen.png')]"
       }`}
-      style={{ backgroundPosition: "center calc(50% - 3rem)" }}
+      style={{
+        backgroundPosition: isOnboarding ? "center calc(50% - 6rem)" : "center calc(50% - 3rem)",
+      }}
     >
-      {!isOnboarding && <Header />}
-      {children}
+      <SnackbarProvider>
+        {!isOnboarding && <Header />}
+        {children}
+      </SnackbarProvider>
     </body>
   );
 }

@@ -9,6 +9,7 @@ interface TextFieldProps {
   value?: string;
   onChange?: (value: string) => void;
   helperText?: string;
+  error?: boolean;
 }
 
 export default function TextField({
@@ -17,6 +18,7 @@ export default function TextField({
   value,
   onChange,
   helperText,
+  error = false,
 }: TextFieldProps) {
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
@@ -43,7 +45,9 @@ export default function TextField({
         )}
       </div>
       {helperText && (
-        <span className="text-xs text-accent px-2">{helperText}</span>
+        <span className={`text-xs px-2 ${error ? "text-danger" : "text-accent"}`}>
+          {helperText}
+        </span>
       )}
     </div>
   );

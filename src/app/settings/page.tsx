@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TextField from "@/components/TextField";
 import Button from "@/components/Button";
 import CircleCheckbox from "@/components/CircleCheckbox";
 import { DUMMY_USER_ID, DUMMY_FRIENDS } from "@/data/dummy";
+import { useLogout } from "@/hooks/useAuth";
+import { useSnackbar } from "@/components/SnackbarProvider";
 
 const INFO_ITEMS = ["버전", "업데이트 내역", "이용약관", "문의하기"];
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { logout, isLoading: isLoggingOut } = useLogout();
+  const { showSnackbar } = useSnackbar();
   const [userId, setUserId] = useState(DUMMY_USER_ID);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -18,6 +24,12 @@ export default function SettingsPage() {
     setSelected((prev) =>
       prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
     );
+  };
+
+  const handleLogout = async () => {
+    const { ok, error } = await logout();
+    showSnackbar(ok ? "로그아웃 되었습니다." : error?.message ?? "로그아웃에 실패했어요.");
+    router.push("/");
   };
 
   return (
@@ -66,7 +78,13 @@ export default function SettingsPage() {
 
           <div className="flex gap-3 mt-2">
             <Button label="계정 삭제하기" variant="danger" className="flex-1" onClick={() => {}} />
-            <Button label="로그아웃" variant="outlined" className="flex-1" onClick={() => {}} />
+            <Button
+              label="로그아웃"
+              variant="outlined"
+              className="flex-1"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            />
           </div>
         </section>
 
@@ -114,6 +132,14 @@ export default function SettingsPage() {
             </button>
           ))}
         </section>
+
+        <button
+          className="self-center font-point text-lg text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          로그아웃
+        </button>
       </div>
     </main>
   );
