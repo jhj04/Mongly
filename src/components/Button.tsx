@@ -10,6 +10,7 @@ interface ButtonProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function Button({
@@ -18,12 +19,14 @@ export default function Button({
   variant = "filled",
   size = "md",
   className = "",
+  disabled = false,
 }: ButtonProps) {
-  const base = "rounded-[2rem] font-point whitespace-nowrap transition-all active:scale-95";
+  const base =
+    "inline-flex items-center justify-center rounded-[2rem] font-point whitespace-nowrap transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none";
 
   const sizes: Record<ButtonSize, string> = {
-    lg: "px-4 py-3 sm:px-10 sm:py-5 text-sm sm:text-xl",
-    md: "px-4 py-3 sm:px-5 sm:py-2 text-sm sm:text-lg",
+    lg: "px-[clamp(1rem,4vw,2.5rem)] py-[clamp(0.75rem,2vw,1.25rem)] text-[clamp(0.875rem,1.6vw,1.25rem)]",
+    md: "px-[clamp(1rem,2.5vw,1.25rem)] py-[clamp(0.5rem,1.2vw,0.75rem)] text-[clamp(0.875rem,1.4vw,1.125rem)]",
     sm: "px-5 py-2 text-sm",
   };
 
@@ -34,8 +37,12 @@ export default function Button({
   };
 
   return (
-    <button onClick={onClick} className={`${base} ${sizes[size]} ${styles[variant]} ${className}`}>
-      <span className="relative z-10">{label}</span>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${base} ${sizes[size]} ${styles[variant]} ${className}`}
+    >
+      <span className="relative z-10 leading-none">{label}</span>
     </button>
   );
 }
