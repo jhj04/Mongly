@@ -29,6 +29,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     const saved = localStorage.getItem(REMEMBERED_EMAIL_KEY);
     if (saved) {
+      // localStorage(외부 시스템)에서 마운트 시 1회 값을 읽어와 동기화하는 용도라 의도된 패턴
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmail(saved);
       setRememberEmail(true);
     }
