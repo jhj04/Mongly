@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { login, signup, logout, LoginRequest, SignupRequest, AuthUser } from "@/lib/api/auth";
+import { useEffect, useState } from "react";
+import { login, signup, logout, getMe, LoginRequest, SignupRequest, AuthUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/axios";
 
 function toApiError(e: unknown): ApiError {
@@ -51,6 +51,33 @@ export function useSignup() {
   };
 
   return { signup: submit, isLoading, error };
+}
+
+// 현재 로그인한 사용자 정보 조회 — 마운트 시 1회 조회
+export function useMe() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getMe()
+      .then((me) => {
+        if (!cancelled) setUser(me);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(toApiError(e));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { user, isLoading, error };
 }
 
 export function useLogout() {
