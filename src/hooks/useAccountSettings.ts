@@ -39,6 +39,8 @@ export function useAccountSettings() {
   const [deleteMessage, setDeleteMessage] = useState("");
 
   useEffect(() => {
+    // 서버에서 비동기로 조회된 user(외부 시스템)를 편집 가능한 로컬 상태로 동기화하는 용도
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user) setLoginId(user.loginId);
   }, [user]);
 

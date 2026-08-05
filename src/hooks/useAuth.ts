@@ -61,7 +61,6 @@ export function useMe() {
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
     getMe()
       .then((me) => {
         if (!cancelled) setUser(me);
