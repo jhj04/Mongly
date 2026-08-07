@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { PhysicsBead } from "@/hooks/useJarPhysics";
+import { useEscapingTooltip, BeadTooltipPortal } from "./BeadTooltip";
 
 interface JarBeadsProps {
   beads: PhysicsBead[];
@@ -16,23 +17,43 @@ export default function JarBeads({ beads, registerBeadEl }: JarBeadsProps) {
   return (
     <>
       {beads.map((bead) => (
-        <div
-          key={bead.id}
-          ref={(el) => registerBeadEl(bead.id, el)}
-          className="absolute left-0 top-0"
-          style={{ width: bead.radius * 2, height: bead.radius * 2, willChange: "transform" }}
-        >
-          <div className="relative w-full h-full animate-[bead-in_0.2s_ease-out]">
-            <Image
-              src={bead.emotion.image}
-              alt={bead.emotion.label}
-              fill
-              sizes={`${bead.radius * 2}px`}
-              className="drop-shadow"
-            />
-          </div>
-        </div>
+        <JarBead key={bead.id} bead={bead} registerBeadEl={registerBeadEl} />
       ))}
     </>
+  );
+}
+
+interface JarBeadProps {
+  bead: PhysicsBead;
+  registerBeadEl: (id: string, el: HTMLDivElement | null) => void;
+}
+
+// 훅(useEscapingTooltip)은 .map() 콜백 안에서 직접 호출할 수 없어서 구슬 하나당
+// 컴포넌트로 분리함 — 유리병 내부(overflow-hidden)에 잘리지 않도록 라벨은 포탈로 그림.
+function JarBead({ bead, registerBeadEl }: JarBeadProps) {
+  const { ref, pos, show, hide } = useEscapingTooltip<HTMLDivElement>();
+
+  return (
+    <div
+      ref={(el) => {
+        ref.current = el;
+        registerBeadEl(bead.id, el);
+      }}
+      className="absolute left-0 top-0"
+      style={{ width: bead.radius * 2, height: bead.radius * 2, willChange: "transform" }}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+    >
+      <div className="relative w-full h-full animate-[bead-in_0.2s_ease-out]">
+        <Image
+          src={bead.emotion.image}
+          alt={bead.emotion.label}
+          fill
+          sizes={`${bead.radius * 2}px`}
+          className="drop-shadow"
+        />
+      </div>
+      <BeadTooltipPortal pos={pos} label={bead.emotion.label} />
+    </div>
   );
 }

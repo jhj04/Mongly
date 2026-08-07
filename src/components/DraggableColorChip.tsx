@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import type { Emotion } from "@/lib/emotions";
+import { useEscapingTooltip, BeadTooltipPortal } from "./BeadTooltip";
 
 interface DraggableColorChipProps {
   emotion: Emotion;
@@ -31,6 +32,8 @@ export default function DraggableColorChip({
   onDropSuccess,
   className = "",
 }: DraggableColorChipProps) {
+  const { ref, pos, show, hide } = useEscapingTooltip<HTMLDivElement>();
+
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent) => {
     const jarEl = jarRef.current;
     if (!jarEl) return;
@@ -49,6 +52,7 @@ export default function DraggableColorChip({
 
   return (
     <motion.div
+      ref={ref}
       role="button"
       aria-label={`${emotion.label} 구슬 선택`}
       drag={!disabled}
@@ -57,6 +61,8 @@ export default function DraggableColorChip({
       dragMomentum={false}
       whileDrag={{ scale: 1.2, zIndex: 50 }}
       whileHover={!disabled ? { scale: 1.05 } : undefined}
+      onHoverStart={show}
+      onHoverEnd={hide}
       onDragEnd={(event) => handleDragEnd(event)}
       className={`relative w-10 h-10 flex-shrink-0 ${
         disabled ? "cursor-not-allowed opacity-40" : "cursor-grab active:cursor-grabbing"
@@ -64,6 +70,7 @@ export default function DraggableColorChip({
       style={{ touchAction: "none" }}
     >
       <Image src={emotion.image} alt={emotion.label} fill sizes="40px" className="pointer-events-none select-none drop-shadow" />
+      <BeadTooltipPortal pos={pos} label={emotion.label} />
     </motion.div>
   );
 }
