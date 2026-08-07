@@ -33,8 +33,18 @@ export default function Jar({
   return (
     <div className="flex flex-1 items-center justify-center">
       <div ref={jarRef} className="relative mt-10 w-[clamp(280px,55vw,480px)] aspect-square">
-        <span className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-full bg-white px-2 py-0.5 text-xs shadow-drop">
-          {count}/{max}
+        <span
+          className={
+            "absolute top-3 left-1/2 -translate-x-1/2 z-10 overflow-hidden rounded-full " +
+            "border border-white/35 bg-secondary/10 px-2 py-0.5 text-xs text-primary-900 " +
+            "shadow-surface backdrop-blur-md backdrop-saturate-150 " +
+            "before:content-[''] before:absolute before:inset-0 before:pointer-events-none " +
+            "before:bg-[radial-gradient(circle_at_75%_20%,rgba(255,255,255,0.35),transparent_55%)]"
+          }
+        >
+          <span className="relative z-10">
+            {count}/{max}
+          </span>
         </span>
 
         <Image
