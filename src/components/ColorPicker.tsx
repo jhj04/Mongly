@@ -32,10 +32,13 @@ export default function ColorPicker({
       <div
         className={
           "relative z-10 w-[236px] sm:w-auto -mt-[70vh] pt-[70vh] overflow-x-auto sm:overflow-x-visible " +
-          "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          "pointer-events-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         }
       >
-        <div className="flex items-center gap-3 px-5 py-3 w-max">
+        {/* 위쪽 pt-[70vh] 여백은 클리핑 범위만 늘리려는 용도라 눈에 안 보이는데,
+            부모를 pointer-events-none으로 비워두고 실제 보이는 줄만 다시 켜서
+            그 빈 공간이 유리병 위의 마우스 이벤트를 가로채지 않게 함. */}
+        <div className="flex items-center gap-3 px-5 py-3 w-max pointer-events-auto">
           {emotions.map((emotion) => (
             <DraggableColorChip
               key={emotion.id}
