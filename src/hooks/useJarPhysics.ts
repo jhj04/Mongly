@@ -20,7 +20,7 @@ interface UseJarPhysicsOptions {
 // 컨테이너 크기가 바뀌어도(반응형 리사이즈) 벽은 마운트 시점 크기로 고정됨.
 export function useJarPhysics(
   containerRef: React.RefObject<HTMLDivElement | null>,
-  { max = 10 }: UseJarPhysicsOptions = {}
+  { max = 7 }: UseJarPhysicsOptions = {}
 ) {
   const [beads, setBeads] = useState<PhysicsBead[]>([]);
   const engineRef = useRef<Matter.Engine | null>(null);
