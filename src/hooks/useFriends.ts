@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  addFriend,
-  getFriends,
-  deleteFriends,
-  getFriendsJars,
-  AddFriendRequest,
-  DeleteFriendsRequest,
-  Friend,
-  FriendShelfEntry,
-} from "@/lib/api/friends";
+import { getFriends, getFriendsJars, addFriend, deleteFriends, Friend, FriendShelfEntry } from "@/lib/api/friends";
 import { ApiError } from "@/lib/axios";
 
 function toApiError(e: unknown): ApiError {
@@ -18,29 +9,7 @@ function toApiError(e: unknown): ApiError {
   return new ApiError({ code: "NETWORK_ERROR", message: "네트워크 오류가 발생했어요." });
 }
 
-export function useAddFriend() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-
-  const submit = async (data: AddFriendRequest) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await addFriend(data);
-      return { loginId: result.loginId, error: null as ApiError | null };
-    } catch (e) {
-      const apiError = toApiError(e);
-      setError(apiError);
-      return { loginId: null, error: apiError };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { addFriend: submit, isLoading, error };
-}
-
-// 설정/친구 탭 친구 목록 — 마운트 시 조회, 추가/삭제 후 refetch로 갱신
+// 설정 페이지 친구 목록 — 'N/10' 카운터 및 삭제 대상 선택에 사용
 export function useFriendsList() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [total, setTotal] = useState(0);
@@ -69,29 +38,7 @@ export function useFriendsList() {
   return { friends, total, isLoading, error, refetch };
 }
 
-export function useDeleteFriends() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-
-  const submit = async (data: DeleteFriendsRequest) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await deleteFriends(data);
-      return { deleted: result.deleted, error: null as ApiError | null };
-    } catch (e) {
-      const apiError = toApiError(e);
-      setError(apiError);
-      return { deleted: null, error: apiError };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { deleteFriends: submit, isLoading, error };
-}
-
-// 친구 탭 선반 — 친구별 최신 유리병 1개씩
+// 친구 탭 선반 — 친구마다 최신 유리병 1개씩(없으면 jar: null)
 export function useFriendsJars() {
   const [friends, setFriends] = useState<FriendShelfEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,4 +63,50 @@ export function useFriendsJars() {
   }, []);
 
   return { friends, isLoading, error, refetch };
+}
+
+// 설정 페이지 친구 추가 — loginId로 바로 추가(현재는 즉시 성립, 추후 요청-승인 방식으로 변경 예정)
+export function useAddFriend() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const submit = async (friendLoginId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await addFriend({ friendLoginId });
+      return { result, error: null as ApiError | null };
+    } catch (e) {
+      const apiError = toApiError(e);
+      setError(apiError);
+      return { result: null, error: apiError };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { addFriend: submit, isLoading, error };
+}
+
+// 설정 페이지 친구 삭제 — 선택한 loginId들을 한 번에 해제(전체 성공/전체 실패)
+export function useDeleteFriends() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const submit = async (friendLoginIds: string[]) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await deleteFriends({ friendLoginIds });
+      return { result, error: null as ApiError | null };
+    } catch (e) {
+      const apiError = toApiError(e);
+      setError(apiError);
+      return { result: null, error: apiError };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { deleteFriends: submit, isLoading, error };
 }

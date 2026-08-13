@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import TextField from "@/components/TextField";
-import Button from "@/components/Button";
-import Checkbox from "@/components/Checkbox";
+import TextField from "@/components/common/TextField";
+import Button from "@/components/common/Button";
+import Checkbox from "@/components/common/Checkbox";
 import { useLogin, useSignup } from "@/hooks/useAuth";
-import { useSnackbar } from "@/components/SnackbarProvider";
+import { useSnackbar } from "@/components/common/SnackbarProvider";
 
 type Mode = "login" | "signup";
 
@@ -102,6 +102,13 @@ export default function OnboardingPage() {
                 onChange={setPasswordConfirm}
               />
               <TextField label="닉네임" type="text" value={nickname} onChange={setNickname} />
+              <div className="px-1">
+                <Checkbox
+                  label="이용약관에 동의합니다"
+                  checked={agreedToTerms}
+                  onChange={setAgreedToTerms}
+                />
+              </div>
             </>
           )}
           {mode === "login" && (
@@ -143,11 +150,6 @@ export default function OnboardingPage() {
                 onClick={handleSignup}
                 disabled={isSigningUp}
                 className="w-full !font-sans !text-sm !py-4"
-              />
-              <Checkbox
-                label="이용약관에 동의합니다"
-                checked={agreedToTerms}
-                onChange={setAgreedToTerms}
               />
               <button
                 className="font-sans text-sm text-accent hover:text-primary-900 transition-colors"

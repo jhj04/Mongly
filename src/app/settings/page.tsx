@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useLogout } from "@/hooks/useAuth";
-import { useSnackbar } from "@/components/SnackbarProvider";
+import { useSnackbar } from "@/components/common/SnackbarProvider";
 import AccountSection from "@/components/settings/AccountSection";
 import FriendsSection from "@/components/settings/FriendsSection";
 import InfoSection from "@/components/settings/InfoSection";

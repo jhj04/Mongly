@@ -3,10 +3,9 @@ import axios, { AxiosError } from "axios";
 export interface ApiErrorBody {
   code: string;
   message: string;
-  details?: {
-    formErrors?: string[];
-    fieldErrors?: Record<string, string[]>;
-  };
+  // 엔드포인트마다 details 모양이 달라서(폼 에러, JAR_LIMIT의 details.jars 등) 느슨하게 두고
+  // 각 호출부에서 필요한 모양으로 캐스팅해서 씀
+  details?: Record<string, unknown>;
 }
 
 // 서버 에러 응답({ error: {...} })을 던지기 쉬운 형태로 정규화한 에러

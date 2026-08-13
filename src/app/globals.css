@@ -57,3 +57,14 @@ body {
     transform: scale(1);
   }
 }
+
+/* 유리병 완성 결과 페이지 — 감정 색 원형 그라데이션이 도는 듯한 느낌.
+   translate로 중앙 정렬을 유지한 채 rotate만 애니메이션함 */
+@keyframes gradient-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
