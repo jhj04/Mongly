@@ -47,7 +47,7 @@ export default function AccountSection() {
 
       <div className="flex flex-col gap-1">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
-          <span className="shrink-0 font-point text-lg text-primary-900 sm:w-24">아이디 수정</span>
+          <span className="shrink-0 font-point text-lg text-primary-900 sm:w-24">닉네임 수정</span>
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <TextField label="아이디" value={loginId} onChange={handleLoginIdChange} />
