@@ -9,7 +9,7 @@ import {
   useUpdatePassword,
   useDeleteAccount,
 } from "@/hooks/useUser";
-import { useSnackbar } from "@/components/SnackbarProvider";
+import { useSnackbar } from "@/components/common/SnackbarProvider";
 
 // 설정 페이지 "계정" 섹션(아이디 수정/비밀번호 변경/계정 삭제/로그아웃)의
 // 상태와 핸들러를 전부 모아서, 컴포넌트 쪽은 JSX 렌더링만 담당하게 분리함.

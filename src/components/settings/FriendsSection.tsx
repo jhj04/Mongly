@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Button from "@/components/Button";
-import CircleCheckbox from "@/components/CircleCheckbox";
+import Button from "@/components/common/Button";
+import CircleCheckbox from "@/components/common/CircleCheckbox";
 import { DUMMY_FRIENDS } from "@/data/dummy";
 
 export default function FriendsSection() {

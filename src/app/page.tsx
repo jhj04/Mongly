@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import TextField from "@/components/TextField";
-import Button from "@/components/Button";
-import Checkbox from "@/components/Checkbox";
+import TextField from "@/components/common/TextField";
+import Button from "@/components/common/Button";
+import Checkbox from "@/components/common/Checkbox";
 import { useLogin, useSignup } from "@/hooks/useAuth";
-import { useSnackbar } from "@/components/SnackbarProvider";
+import { useSnackbar } from "@/components/common/SnackbarProvider";
 
 type Mode = "login" | "signup";
 

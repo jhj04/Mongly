@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import AppShell from "@/components/AppShell";
+import AppShell from "@/components/common/AppShell";
 import "./globals.css";
 
 const pretendard = localFont({

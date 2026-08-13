@@ -1,7 +1,7 @@
 "use client";
 
-import TextField from "@/components/TextField";
-import Button from "@/components/Button";
+import TextField from "@/components/common/TextField";
+import Button from "@/components/common/Button";
 import { useAccountSettings } from "@/hooks/useAccountSettings";
 
 export default function AccountSection() {
