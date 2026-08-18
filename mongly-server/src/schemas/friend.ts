@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { loginIdSchema } from "./auth";
 
-export const addFriendSchema = z.object({
-  friendLoginId: loginIdSchema, // 정확 일치만 — 검색/부분 일치 API는 만들지 않는다 (프라이버시)
+export const sendFriendRequestSchema = z.object({
+  toLoginId: loginIdSchema, // 정확 일치만 — 검색/부분 일치 API는 만들지 않는다 (프라이버시)
 });
 
 // 피그마 친구 삭제 모달: 다중 선택 → "OO님 외 2명을 삭제하시겠습니까?"

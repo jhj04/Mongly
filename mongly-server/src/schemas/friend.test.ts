@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { addFriendSchema, removeFriendsSchema } from "./friend";
+import { removeFriendsSchema, sendFriendRequestSchema } from "./friend";
 
-describe("addFriendSchema", () => {
+describe("sendFriendRequestSchema", () => {
   it("정상 아이디 통과 (한글 포함)", () => {
-    expect(addFriendSchema.safeParse({ friendLoginId: "허수현" }).success).toBe(true);
+    expect(sendFriendRequestSchema.safeParse({ toLoginId: "허수현" }).success).toBe(true);
   });
 
   it("아이디 형식 위반 거부", () => {
-    expect(addFriendSchema.safeParse({ friendLoginId: "a" }).success).toBe(false);
-    expect(addFriendSchema.safeParse({ friendLoginId: "spa ce" }).success).toBe(false);
+    expect(sendFriendRequestSchema.safeParse({ toLoginId: "a" }).success).toBe(false);
+    expect(sendFriendRequestSchema.safeParse({ toLoginId: "spa ce" }).success).toBe(false);
   });
 });
 

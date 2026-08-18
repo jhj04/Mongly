@@ -1,8 +1,9 @@
 # Mongly API 명세서
 
-> 백엔드(mongly-server) ↔ 마지막 수정: 2026-07-29
+> 백엔드(mongly-server) ↔ 마지막 수정: 2026-08-17
 > 인터랙티브 문서: 서버 실행 후 `/api/docs` (Swagger)
 > 로그인은 **이메일+비밀번호**. `loginId`는 닉네임(친구 추가 키·표시명) 역할. 감정 담기는 **드래그마다 즉시 저장** + 되돌리기 지원.
+> **v0.5 변경**: ① 완성하기가 프론트 렌더 PNG를 함께 업로드(`image` base64) — 서재·친구 탭은 `imageUrl`로 이미지를 렌더 ② 감정 10종 교체(기쁨/슬픔/분노/놀람/불안/사랑/짜증/설렘/후회/희망) ③ 친구가 **요청 → 수락**으로 성립 (`POST /friends` 제거 → `/friend-requests` 신설, 종 아이콘 알림)
 
 ## 1. 기본 정보
 
@@ -10,7 +11,7 @@
 |------|------|
 | Base URL | 프론트에서는 항상 **같은 출처의 `/api/*`** 로 호출 (Next rewrites가 백엔드로 프록시) |
 | 로컬 백엔드 | `http://localhost:4000` (프론트 dev 서버 경유 시 `http://localhost:3000/api/*`) |
-| 형식 | 요청/응답 모두 JSON. **상태 변경 요청(POST/PATCH/DELETE)에 JSON이 아닌 `Content-Type`을 붙이면 `415`** (바디 없는 요청은 Content-Type 생략 가능 — 예: 로그아웃) |
+| 형식 | 요청/응답 모두 JSON. **상태 변경 요청(POST/PATCH/DELETE)에 JSON이 아닌 `Content-Type`을 붙이면 `415`** (바디 없는 요청은 Content-Type 생략 가능 — 예: 로그아웃). 이미지 업로드도 multipart가 아니라 **JSON 안의 base64** (CSRF 방어 유지 목적). 본문 한도 2MB |
 | 인증 | httpOnly 쿠키 `mongly_token` (7일). 프록시 경유 same-origin이라 **fetch에 아무 설정 없이 자동 전송**. localStorage 사용 금지 |
 | 날짜 | `recordDate`는 **KST 기준** `"YYYY-MM-DD"` 문자열. "오늘" 판정은 서버가 함 (`GET /api/jars/today`) — 프론트 로컬 시계로 판정하지 말 것 |
 | 캐싱 | 인증 데이터 fetch에는 `cache: "no-store"` 권장 (Next 캐싱 주의) |
@@ -50,19 +51,25 @@
 | `JAR_ALREADY_TODAY` | 409 | 오늘 유리병 이미 완성 (담기·완성) |
 | `JAR_LIMIT` | 409 | 서재 7개 초과 — `details.jars`에 현재 목록 (드래프트는 보존) |
 | `JAR_NOT_FOUND` | 404 | 없는 유리병 |
-| `FORBIDDEN` | 403 | 남의 것 접근 (친구 아님 / 본인 아님) |
+| `IMAGE_INVALID` | 400 | 완성 이미지가 PNG가 아니거나 base64가 깨짐 |
+| `IMAGE_TOO_LARGE` | 413 | 완성 이미지 원본 1MB 초과 |
+| `IMAGE_NOT_FOUND` | 404 | 유리병 이미지 없음 (정상 경로에선 발생 안 함 — 방어적) |
+| `FORBIDDEN` | 403 | 남의 것 접근 (친구 아님 / 본인 아님 / 내가 받은 요청 아님) |
 | `USER_NOT_FOUND` | 404 | 없는 닉네임 |
-| `SELF_FRIEND` | 400 | 자기 자신 친구 추가 |
-| `ALREADY_FRIEND` | 409 | 이미 친구 |
-| `FRIEND_LIMIT_ME` | 409 | 내 친구 10명 가득 |
-| `FRIEND_LIMIT_TARGET` | 409 | 상대 친구 10명 가득 |
+| `SELF_FRIEND` | 400 | 자기 자신에게 친구 요청 |
+| `ALREADY_FRIEND` | 409 | 이미 친구 (요청 보내기·수락 시) |
+| `REQUEST_ALREADY_SENT` | 409 | 같은 상대에게 이미 보낸 대기 요청 있음 |
+| `REQUEST_NOT_FOUND` | 404 | 이미 처리됐거나 없는 친구 요청 (수락/거절 시) |
+| `REQUEST_INBOX_FULL` | 409 | 상대의 대기 요청이 20건 가득 (요청 보내기 시) |
+| `FRIEND_LIMIT_ME` | 409 | 내 친구 10명 가득 (요청 보내기·수락 시) |
+| `FRIEND_LIMIT_TARGET` | 409 | 상대 친구 10명 가득 (수락 시 — 요청은 보존됨. **맞요청 즉시 성립 경로에선 요청 보내기에서도 발생**) |
 | `FRIEND_NOT_FOUND` | 404 | 삭제 목록에 친구 아닌 아이디 포함 (아무것도 삭제 안 됨) |
 
 > `DRAFT_EMPTY`가 두 status인 이유: 되돌리기는 "지울 게 없는 상태 충돌"이라 409, 완성은 "빈 병으론 완성 불가한 잘못된 요청"이라 400. 엔드포인트가 다르므로 프론트 분기에 혼선 없음.
 
 ### Rate Limit (분당, IP 기준)
 
-로그인 10 · 회원가입 5 · 닉네임 중복확인 30 · 친구 추가 10 · 친구 서재 조회 30 — 초과 시 `429 RATE_LIMITED`
+로그인 10 · 회원가입 5 · 닉네임 중복확인 30 · 친구 요청 보내기 10 · 친구 서재 조회 30 — 초과 시 `429 RATE_LIMITED`
 (드래그·되돌리기·완성은 유저·일당 최대 7행이라 제한 없음)
 
 ### 입력 규칙
@@ -71,24 +78,27 @@
 - 닉네임(loginId): **2~16자, 한글/영문/숫자** (공백·특수문자 불가)
 - 비밀번호: **8자 이상**, 72바이트 이하(한글 24자 상당)
 - 감정: 유리병당 **합계 1~7개**, 같은 감정은 여러 번 드래그하면 `count`로 집계
+- 완성 이미지: **PNG만, 원본 1MB 이하** — `canvas.toDataURL("image/png")` 값을 그대로 보내면 됨 (권장 해상도 512~768px. 서재 7병 제한 덕에 유저당 이미지 총량도 최대 7MB로 유계)
 
 ### 유리병(Jar) 객체 — 공통 형태
 
 ```json
 {
   "id": "clx8f2k...",
-  "recordDate": "2026-09-14",
-  "dominantEmotionId": 1,
+  "recordDate": "2026-08-17",
+  "dominantEmotionId": 3,
   "emotions": [
-    { "emotionId": 1, "name": "분노", "colorHex": "#F05B5B", "count": 2 },
-    { "emotionId": 6, "name": "슬픔", "colorHex": "#4966B6", "count": 1 }
-  ]
+    { "emotionId": 2, "name": "슬픔", "colorHex": "#4966B6", "count": 1 },
+    { "emotionId": 3, "name": "분노", "colorHex": "#F05B5B", "count": 2 }
+  ],
+  "imageUrl": "/api/jars/clx8f2k.../image"
 }
 ```
 
 - `dominantEmotionId`: 최다 감정. **동률이면 `null`** → "여러 감정이 고르게 섞였어요"
-- 색 조합은 프론트 담당 — `emotions[].colorHex`(기준색)를 재료로 몽글리에 칠한다
-- **드래프트(담는 중) 객체**도 같은 형태지만 `id`·`recordDate`가 없고 `total`이 있음: `{ "total": 3, "dominantEmotionId": 1, "emotions": [...] }` (빈 병이면 `total: 0`, `emotions: []`)
+- `imageUrl`: 완성 시 업로드된 **유리병 PNG** 경로 — 서재·친구 탭은 `<img src={imageUrl}>`로 렌더 (같은 출처라 쿠키 자동 전송, 병당 1장 불변이라 브라우저가 캐시함)
+- 색 조합은 프론트 담당 — `emotions[].colorHex`(기준색)를 재료로 캐릭터 보기 화면에 칠한다
+- **드래프트(담는 중) 객체**도 같은 형태지만 `id`·`recordDate`·`imageUrl`이 없고 `total`이 있음: `{ "total": 3, "dominantEmotionId": 3, "emotions": [...] }` (빈 병이면 `total: 0`, `emotions: []`)
 
 ---
 
@@ -156,7 +166,7 @@
 
 ## 4. 감정 / 유리병 (몽글리 탭)
 
-> **감정 담기 흐름:** 사용자가 감정 아이콘을 유리병으로 드래그할 때마다 `POST /jars/draft/emotions`로 **즉시 서버에 저장**된다. 되돌리기는 `DELETE`. 하루 중 여러 번 접속해도 담던 드래프트가 유지되고, "완성하기"를 누르면 바디 없는 `POST /jars`로 확정된다. **서버 드래프트가 유일한 진실** — 프론트는 응답으로 재렌더한다.
+> **감정 담기 흐름:** 사용자가 감정 아이콘을 유리병으로 드래그할 때마다 `POST /jars/draft/emotions`로 **즉시 서버에 저장**된다. 되돌리기는 `DELETE`. 하루 중 여러 번 접속해도 담던 드래프트가 유지되고, "완성하기"를 누르면 프론트가 렌더한 **유리병 PNG(`image` base64)와 함께 `POST /jars`**로 확정된다. **서버 드래프트가 유일한 진실** — 프론트는 응답으로 재렌더한다.
 >
 > ⚠️ **드래그 뮤테이션은 직렬 전송** (한 번에 하나씩). 연타로 병렬 전송하면 응답 도착 순서가 뒤바뀌어 UI가 과거 상태로 튈 수 있다. 각 요청을 이전 응답 수신 후 보내거나 클라이언트 큐로 직렬화할 것.
 
@@ -164,9 +174,24 @@
 
 ```json
 // 200
-{ "emotions": [ { "id": 1, "name": "분노", "colorHex": "#F05B5B", "sortOrder": 1 }, ... 10종 ] }
+{ "emotions": [ { "id": 1, "name": "기쁨", "colorHex": "#FFD54A", "sortOrder": 1 }, ... 10종 ] }
 ```
 팔레트 렌더링·색 조합의 원천 데이터. 앱 시작 시 1회 로드하면 충분.
+
+**감정 10종 (2026-08-17 확정 — id = 합의 순서, colorHex는 백엔드 기준색이며 최종 색은 프론트 재량):**
+
+| id | 이름 | 색 | 기준색 |
+|----|------|-----|--------|
+| 1 | 기쁨 | 노랑 | `#FFD54A` |
+| 2 | 슬픔 | 파랑 남색 | `#4966B6` |
+| 3 | 분노 | 빨강 | `#F05B5B` |
+| 4 | 놀람 | 하늘색 | `#7ED9F8` |
+| 5 | 불안 | 보라 | `#9B7AE5` |
+| 6 | 사랑 | 핑크 | `#FF78AE` |
+| 7 | 짜증 | 주황 | `#FF9D4D` |
+| 8 | 설렘 | 연한 핑크 | `#FFD5E8` |
+| 9 | 후회 | 회색 | `#A9B0B8` |
+| 10 | 희망 | 연두 | `#B7E66B` |
 
 ### GET /api/jars/today 🔒 — 오늘 상태
 
@@ -185,9 +210,9 @@
 
 ```json
 // 요청 — 감정 1개
-{ "emotionId": 1 }
+{ "emotionId": 3 }
 // 201 — 갱신된 드래프트 전체 (같은 감정 또 담으면 count 증가)
-{ "total": 2, "dominantEmotionId": 1, "emotions": [ { "emotionId": 1, "name": "분노", "colorHex": "#F05B5B", "count": 2 } ] }
+{ "total": 2, "dominantEmotionId": 3, "emotions": [ { "emotionId": 3, "name": "분노", "colorHex": "#F05B5B", "count": 2 } ] }
 ```
 에러: `400 INVALID_EMOTION`(없는 감정) · `409 DRAFT_FULL`(7개 다 담음) · `409 JAR_ALREADY_TODAY`(오늘 이미 완성 → 담기 불가)
 
@@ -201,23 +226,33 @@
 ```
 에러: `409 DRAFT_EMPTY`(되돌릴 감정이 없음)
 
-### POST /api/jars 🔒 — 완성하기
+### POST /api/jars 🔒 — 완성하기 (+ 유리병 PNG 업로드)
 
-**바디 없음.** 서버에 저장된 오늘 드래프트를 유리병으로 확정한다.
+서버에 저장된 오늘 드래프트를 유리병으로 확정하면서, **프론트가 렌더한 유리병 PNG를 함께 저장**한다.
 
 ```json
-// 요청: 바디 없음
-// 201 — 유리병 객체 그대로 (드래프트는 비워짐)
-{ "id": "...", "recordDate": "2026-07-29", "dominantEmotionId": 1, "emotions": [ ... ] }
+// 요청 — image는 canvas.toDataURL("image/png") 값 그대로 (data URL 접두어 있어도, 순수 base64여도 됨)
+{ "image": "data:image/png;base64,iVBORw0KGgo..." }
+// 201 — 유리병 객체 그대로 (드래프트는 비워짐). imageUrl로 즉시 렌더 가능
+{ "id": "...", "recordDate": "2026-08-17", "dominantEmotionId": 3, "emotions": [ ... ], "imageUrl": "/api/jars/.../image" }
 ```
 에러:
+- `400 VALIDATION` — `image` 필드 누락
+- `400 IMAGE_INVALID` — PNG가 아니거나 base64가 깨짐
+- `413 IMAGE_TOO_LARGE` — 원본 1MB 초과 (`413 INVALID_BODY`는 본문 자체가 2MB 초과일 때)
 - `400 DRAFT_EMPTY` — 담은 감정이 없음
 - `409 JAR_ALREADY_TODAY` — "오늘의 유리병은 이미 완성했어요"
 - `409 JAR_LIMIT` — `details.jars`에 현재 7개 목록 포함 → "서재에서 비우고 다시 담아주세요". **드래프트는 보존**되므로 서재를 비운 뒤 다시 완성하면 됨
 
 ### GET /api/jars 🔒 — 서재
 
-`200 { "jars": [ <유리병>... ] }` — 최대 7개, 날짜 내림차순
+`200 { "jars": [ <유리병>... ] }` — 최대 7개, 날짜 내림차순. 각 유리병의 `imageUrl`로 선반 이미지를 렌더
+
+### GET /api/jars/:id/image 🔒 — 유리병 PNG (서재·친구 탭 렌더용)
+
+**본인 또는 친구만.** 응답은 JSON이 아니라 **`image/png` 바이너리** — `<img src="/api/jars/:id/image">`로 쓰면 된다.
+캐시는 `Cache-Control: private, max-age=3600` + ETag — 1시간 안에는 재다운로드 없고, 그 뒤엔 재검증(304)만 오간다. 재검증 때 접근 제어가 다시 실행되므로 친구 삭제·병 삭제 후 캐시가 무한정 살아남지 않는다.
+에러: `403 FORBIDDEN` / `404 JAR_NOT_FOUND` / `404 IMAGE_NOT_FOUND`(방어적 — 정상 경로에선 없음)
 
 ### GET /api/jars/:id 🔒 — 유리병 상세 (캐릭터 보기 / 감정 구성 보기)
 
@@ -231,20 +266,50 @@
 
 ## 5. 친구
 
-### POST /api/friends 🔒 — 친구 추가 (설정 모달)
+> **v0.5 흐름**: 친구는 이제 **요청 → 수락**으로 성립한다. ① A가 설정 모달에서 B 닉네임으로 요청 전송 ② B의 종 아이콘에 빨간 점(대기 요청 수) ③ B가 팝업에서 수락하면 쌍방 친구 / 거절하면 요청 삭제(상대에겐 알리지 않음). 즉시 성립이던 `POST /api/friends`는 **제거됨**.
+
+### POST /api/friend-requests 🔒 — 친구 요청 보내기 (설정 모달, 분당 10회)
 
 ```json
-{ "friendLoginId": "허수현" }  →  201 { "loginId": "허수현" }
+{ "toLoginId": "허수현" }  →  201 { "loginId": "허수현", "status": "pending" }
 ```
-요청/수락 없이 **쌍방 즉시 성립**. 에러 코드별 모달 문구:
+
+- `status: "pending"` — 요청이 생성되어 상대의 알림에 뜸
+- `status: "accepted"` — **맞요청 즉시 성립**: 상대가 이미 나에게 요청해 둔 상태였다면 서로 원한 것이므로 수락 절차 없이 바로 친구가 됨
+
+에러 코드별 모달 문구:
 
 | code | status | 안내 문구 예시 |
 |------|--------|----------|
 | `USER_NOT_FOUND` | 404 | 존재하지 않는 아이디예요 |
-| `SELF_FRIEND` | 400 | 자기 자신은 추가할 수 없어요 |
+| `SELF_FRIEND` | 400 | 자기 자신에게는 요청할 수 없어요 |
 | `ALREADY_FRIEND` | 409 | 이미 친구예요 |
+| `REQUEST_ALREADY_SENT` | 409 | 이미 친구 요청을 보냈어요 |
+| `REQUEST_INBOX_FULL` | 409 | 상대에게 대기 중인 요청이 가득 찼어요 |
 | `FRIEND_LIMIT_ME` | 409 | 내 친구가 가득 찼어요 (최대 10명) |
-| `FRIEND_LIMIT_TARGET` | 409 | 상대방의 친구가 가득 찼어요 |
+| `FRIEND_LIMIT_TARGET` | 409 | 상대방의 친구가 가득 찼어요 (**맞요청 즉시 성립 시에만** 이 엔드포인트에서 발생) |
+
+### GET /api/friend-requests 🔒 — 받은 요청 목록 (종 아이콘 팝업)
+
+```json
+// 200 — total이 종 아이콘 빨간 점 배지 값 (0이면 점 없음). 최신순
+{
+  "total": 1,
+  "requests": [
+    { "id": "cmsreq...", "fromLoginId": "허수현", "createdAt": "2026-08-17T09:00:00.000Z" }
+  ]
+}
+```
+
+### POST /api/friend-requests/:id/accept 🔒 — 수락 (받은 사람만, 바디 없음)
+
+`200 { "loginId": "허수현" }` — 쌍방 친구 성립, 요청은 사라짐.
+에러: `404 REQUEST_NOT_FOUND`(이미 처리됨) · `403 FORBIDDEN`(내가 받은 요청 아님) · `409 FRIEND_LIMIT_ME / FRIEND_LIMIT_TARGET`(**요청은 보존** — 친구를 비운 뒤 다시 수락 가능) · `409 ALREADY_FRIEND`
+
+### POST /api/friend-requests/:id/reject 🔒 — 거절 (받은 사람만, 바디 없음)
+
+`200 { "ok": true }` — 요청 삭제. 상대에게 거절 사실은 알리지 않으며, 상대는 다시 신청할 수 있다.
+에러: `404 REQUEST_NOT_FOUND` · `403 FORBIDDEN`
 
 ### GET /api/friends 🔒 — 친구 목록
 
@@ -268,14 +333,14 @@
 // 200
 {
   "friends": [
-    { "loginId": "허수현", "jar": { "id": "cmr...", "recordDate": "2026-07-24", "dominantEmotionId": 3, "emotions": [ ... ] } },
+    { "loginId": "허수현", "jar": { "id": "cmr...", "recordDate": "2026-08-15", "dominantEmotionId": 3, "emotions": [ ... ], "imageUrl": "/api/jars/cmr.../image" } },
     { "loginId": "7월제철음식", "jar": null }
   ]
 }
 ```
 
 - `jar: null` = 유리병을 하나도 완성하지 않은 친구 → **비활성 슬롯**으로 렌더
-- 유리병 클릭 → 그 `jar.id`로 `GET /api/jars/:id` (캐릭터 보기 — 친구 접근 허용됨)
+- 선반 이미지는 `jar.imageUrl`로 렌더 (친구 접근 허용됨), 유리병 클릭 → 그 `jar.id`로 `GET /api/jars/:id` (캐릭터 보기)
 
 ---
 
@@ -292,5 +357,8 @@
 1. **401 전역 처리**: `UNAUTHORIZED`(401)를 받으면 로그인 화면으로. 단 `WRONG_PASSWORD`는 400이므로 이 흐름에 걸리지 않음 (의도된 설계)
 2. **로그인 가드**: Next 16에서는 `middleware.ts`가 아니라 **`proxy.ts`** — 쿠키 존재만 확인하는 낙관적 체크로 리다이렉트하고, 최종 판정은 API 401에 맡길 것
 3. **오늘 판정**: 자정 넘김/시차 문제가 있으므로 반드시 `GET /api/jars/today`로. 프론트에서 `new Date()`로 날짜 비교 금지
-4. **색 조합**: 백엔드는 최종 색을 계산하지 않음 — `emotions[].colorHex` × `count` 가중으로 프론트가 조합. 드래프트도 같은 형태라 유리병 렌더 컴포넌트를 그대로 재사용 가능(단 `id`·`recordDate`는 optional 처리)
+4. **색 조합**: 백엔드는 최종 색을 계산하지 않음 — `emotions[].colorHex` × `count` 가중으로 프론트가 조합. 드래프트도 같은 형태라 유리병 렌더 컴포넌트를 그대로 재사용 가능(단 `id`·`recordDate`·`imageUrl`은 optional 처리)
 5. **드래그 뮤테이션 직렬화**: 담기/되돌리기는 한 번에 하나씩 보낸다. 낙관적 업데이트 시엔 각 API 응답(전체 드래프트 스냅샷)으로 최종 보정하되, 병렬 전송으로 응답 순서가 뒤바뀌지 않도록 큐로 직렬화할 것
+6. **완성 이미지 캡처**: 완성 화면의 유리병 영역을 `canvas.toDataURL("image/png")`로 내보내 `POST /jars`의 `image`에 그대로 넣는다. 해상도는 512~768px 권장(1MB 초과 시 `413 IMAGE_TOO_LARGE`). html2canvas류를 쓴다면 배경 투명 옵션 확인
+7. **이미지 렌더**: 서재/친구 탭 유리병은 `<img src={jar.imageUrl}>` 한 줄이면 됨 — same-origin이라 쿠키가 자동 전송되고, 1시간 캐시 + ETag 재검증이라 같은 병을 반복 조회해도 부담 없음. `imageUrl`은 로그인한 본인/친구만 열리므로 외부 공유 불가
+8. **종 아이콘 배지**: `GET /api/friend-requests`의 `total`로 빨간 점 표시. 실시간 푸시는 없으므로 **탭 전환/포커스 시 + 60초 간격 폴링** 정도를 권장. 수락·거절 후에는 응답 반영과 함께 목록·배지를 재조회할 것

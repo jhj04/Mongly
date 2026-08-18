@@ -5,6 +5,11 @@ export function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 
+/** FK 제약 위반(P2003) — 참조 대상(유저 등)이 경합 삭제된 경우. 호출부가 404 계열로 매핑한다 */
+export function isForeignKeyViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003";
+}
+
 /**
  * P2002가 어느 필드에서 났는지 판별한다. meta.target은 Prisma/DB 버전에 따라
  * 배열(['email']) 또는 문자열/인덱스명일 수 있어 둘 다 방어적으로 처리하고,

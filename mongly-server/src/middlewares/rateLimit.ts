@@ -10,6 +10,9 @@ function limiter(limit: number) {
     limit,
     standardHeaders: true,
     legacyHeaders: false,
+    // 통합 테스트(INT=1, test:int 전용)는 supertest가 한 IP로 몰아쳐 한도에 오탐된다 — 판정만 끈다.
+    // 정확히 "1"만 인정 + production 이중 가드: INT=0 같은 오설정이나 배포 env 오염으로 전 리미터가 조용히 꺼지는 것 방지
+    skip: () => process.env.INT === "1" && process.env.NODE_ENV !== "production",
     // 봉투 조립은 errorHandler 한 곳에서만 — 여기서도 next(AppError)로 위임
     handler: (_req, _res, next) => next(new AppError(429, "RATE_LIMITED", "잠시 후 다시 시도해주세요.")),
   });

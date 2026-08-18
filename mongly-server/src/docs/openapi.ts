@@ -17,63 +17,67 @@ const ok = (description: string, example: unknown) => ({
   content: { "application/json": { example } },
 });
 
-// 실제 서버 응답에서 가져온 예시 데이터 (2026-07-29 데모 계정 기준)
+// 실제 서버 응답 형태 기준 예시 데이터 (감정 10종은 2026-08-17 합의 목록)
 const JAR = {
   id: "cms5vyadq0002okckkilawdcs",
-  recordDate: "2026-07-29",
-  dominantEmotionId: 1,
+  recordDate: "2026-08-17",
+  dominantEmotionId: 3,
   emotions: [
-    { emotionId: 1, name: "분노", colorHex: "#F05B5B", count: 2 },
-    { emotionId: 6, name: "슬픔", colorHex: "#4966B6", count: 1 },
+    { emotionId: 2, name: "슬픔", colorHex: "#4966B6", count: 1 },
+    { emotionId: 3, name: "분노", colorHex: "#F05B5B", count: 2 },
   ],
+  imageUrl: "/api/jars/cms5vyadq0002okckkilawdcs/image",
 };
 
-// 담는 중 드래프트 — 유리병과 형태 동일(단 id·recordDate 없고 total 있음). 빈 병이면 total 0
+// 담는 중 드래프트 — 유리병과 형태 동일(단 id·recordDate·imageUrl 없고 total 있음). 빈 병이면 total 0
 const DRAFT = {
   total: 2,
-  dominantEmotionId: 1,
-  emotions: [{ emotionId: 1, name: "분노", colorHex: "#F05B5B", count: 2 }],
+  dominantEmotionId: 3,
+  emotions: [{ emotionId: 3, name: "분노", colorHex: "#F05B5B", count: 2 }],
 };
 
 const FRIEND_JAR = {
   id: "cms5vyenk0005okckvt3h5c5q",
-  recordDate: "2026-07-29",
+  recordDate: "2026-08-17",
   dominantEmotionId: null,
   emotions: [
-    { emotionId: 3, name: "행복", colorHex: "#FFD54A", count: 1 },
-    { emotionId: 5, name: "평온", colorHex: "#7ED9F8", count: 1 },
+    { emotionId: 1, name: "기쁨", colorHex: "#FFD54A", count: 1 },
+    { emotionId: 4, name: "놀람", colorHex: "#7ED9F8", count: 1 },
   ],
+  imageUrl: "/api/jars/cms5vyenk0005okckvt3h5c5q/image",
 };
 
 const EMOTIONS = [
-  { id: 1, name: "분노", colorHex: "#F05B5B", sortOrder: 1 },
-  { id: 2, name: "기쁨", colorHex: "#FF9D4D", sortOrder: 2 },
-  { id: 3, name: "행복", colorHex: "#FFD54A", sortOrder: 3 },
-  { id: 4, name: "희망", colorHex: "#B7E66B", sortOrder: 4 },
-  { id: 5, name: "평온", colorHex: "#7ED9F8", sortOrder: 5 },
-  { id: 6, name: "슬픔", colorHex: "#4966B6", sortOrder: 6 },
-  { id: 7, name: "불안", colorHex: "#9B7AE5", sortOrder: 7 },
-  { id: 8, name: "사랑", colorHex: "#FF78AE", sortOrder: 8 },
-  { id: 9, name: "설렘", colorHex: "#FFD5E8", sortOrder: 9 },
-  { id: 10, name: "무덤덤", colorHex: "#A9B0B8", sortOrder: 10 },
+  { id: 1, name: "기쁨", colorHex: "#FFD54A", sortOrder: 1 },
+  { id: 2, name: "슬픔", colorHex: "#4966B6", sortOrder: 2 },
+  { id: 3, name: "분노", colorHex: "#F05B5B", sortOrder: 3 },
+  { id: 4, name: "놀람", colorHex: "#7ED9F8", sortOrder: 4 },
+  { id: 5, name: "불안", colorHex: "#9B7AE5", sortOrder: 5 },
+  { id: 6, name: "사랑", colorHex: "#FF78AE", sortOrder: 6 },
+  { id: 7, name: "짜증", colorHex: "#FF9D4D", sortOrder: 7 },
+  { id: 8, name: "설렘", colorHex: "#FFD5E8", sortOrder: 8 },
+  { id: 9, name: "후회", colorHex: "#A9B0B8", sortOrder: 9 },
+  { id: 10, name: "희망", colorHex: "#B7E66B", sortOrder: 10 },
 ];
 
 export const openapi = {
   openapi: "3.0.3",
   info: {
     title: "Mongly API",
-    version: "0.4.0",
+    version: "0.5.0",
     description:
       "몽글리 백엔드. 에러 포맷: { error: { code, message, details? } } — 모달 분기는 message가 아닌 code로. " +
       "로그인은 이메일+비밀번호(닉네임=loginId는 친구 추가 키·표시명). " +
       "인증: httpOnly 쿠키(mongly_token) — 로그인/회원가입을 Try it out으로 실행하면 쿠키가 저장되어 이후 🔒 API가 동작. " +
-      "감정 담기는 드래그 1회 = POST /jars/draft/emotions(즉시 저장), 되돌리기 = DELETE, 완성 = 바디 없는 POST /jars. 상세: docs/API.md",
+      "감정 담기는 드래그 1회 = POST /jars/draft/emotions(즉시 저장), 되돌리기 = DELETE, " +
+      "완성 = POST /jars에 프론트가 렌더한 유리병 PNG(base64)를 담아 확정 — 이미지는 GET /jars/:id/image로 서빙. " +
+      "친구는 요청 → 수락으로 성립(종 아이콘 알림). 상세: docs/API.md",
   },
   tags: [
     { name: "인증", description: "이메일 회원가입·로그인·세션" },
     { name: "계정", description: "설정 탭 — 닉네임/비밀번호/탈퇴" },
-    { name: "유리병", description: "몽글리 탭 — 드래그로 담기/되돌리기/완성, 서재" },
-    { name: "친구", description: "친구 탭·설정 탭 — 친구 관리와 친구 서재" },
+    { name: "유리병", description: "몽글리 탭 — 드래그로 담기/되돌리기/완성(PNG 포함), 서재" },
+    { name: "친구", description: "친구 탭·설정 탭·종 아이콘 — 친구 요청/수락과 친구 서재" },
     { name: "기타", description: "헬스체크" },
   ],
   paths: {
@@ -213,7 +217,7 @@ export const openapi = {
         tags: ["유리병"],
         summary: "되돌리기 🔒 — 마지막 담은 감정 1개 제거. 응답 = 갱신된 드래프트",
         responses: {
-          "200": ok("갱신된 드래프트 (빈 병이면 total 0)", { total: 1, dominantEmotionId: 1, emotions: [{ emotionId: 1, name: "분노", colorHex: "#F05B5B", count: 1 }] }),
+          "200": ok("갱신된 드래프트 (빈 병이면 total 0)", { total: 1, dominantEmotionId: 3, emotions: [{ emotionId: 3, name: "분노", colorHex: "#F05B5B", count: 1 }] }),
           "409": err("되돌릴 감정이 없음", "DRAFT_EMPTY", "되돌릴 감정이 없어요."),
         },
       },
@@ -221,22 +225,51 @@ export const openapi = {
     "/api/jars": {
       post: {
         tags: ["유리병"],
-        summary: "완성하기 🔒 — 바디 없음. 서버에 저장된 오늘 드래프트를 유리병으로 확정",
+        summary:
+          "완성하기 🔒 — 서버 드래프트를 확정 + 프론트가 렌더한 유리병 PNG 저장. image는 canvas.toDataURL('image/png') 값(순수 base64도 허용), 원본 1MB 이하",
+        requestBody: {
+          content: {
+            "application/json": {
+              example: { image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...(생략)" },
+            },
+          },
+        },
         responses: {
-          "201": ok("생성된 유리병 — 이 id를 상세/삭제에 사용. 드래프트는 비워짐", JAR),
-          "400": err("담은 감정이 없음", "DRAFT_EMPTY", "담은 감정이 없어요."),
+          "201": ok("생성된 유리병 — 이 id를 상세/삭제/이미지에 사용. 드래프트는 비워짐", JAR),
+          "400": err(
+            "담은 감정이 없음(DRAFT_EMPTY) / image 누락(VALIDATION) / PNG가 아니거나 base64 오류(IMAGE_INVALID)",
+            "IMAGE_INVALID",
+            "이미지는 PNG(base64)만 업로드할 수 있어요.",
+          ),
           "409": err(
             "오늘 이미 완성(JAR_ALREADY_TODAY) / 서재 가득(JAR_LIMIT — details.jars에 현재 7개, 드래프트는 보존)",
             "JAR_LIMIT",
             "서재가 가득 찼어요. 유리병을 비우고 다시 담아주세요.",
             { jars: [JAR] },
           ),
+          "413": err("원본 1MB 초과", "IMAGE_TOO_LARGE", "이미지는 1MB 이하여야 해요."),
         },
       },
       get: {
         tags: ["유리병"],
         summary: "서재 🔒 — 내 유리병 목록 (최대 7개, 날짜 내림차순). 각 항목의 id로 상세/삭제",
         responses: { "200": ok("유리병 목록", { jars: [JAR] }) },
+      },
+    },
+    "/api/jars/{id}/image": {
+      get: {
+        tags: ["유리병"],
+        summary:
+          "유리병 PNG 🔒 — 서재·친구 탭 렌더용. 본인 또는 친구만. 응답은 image/png 바이너리 (1시간 캐시 + ETag 재검증 — 재검증 시 접근 제어 재실행)",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, example: JAR.id }],
+        responses: {
+          "200": {
+            description: "PNG 바이너리 (Cache-Control: private, max-age=3600)",
+            content: { "image/png": { schema: { type: "string", format: "binary" } } },
+          },
+          "403": err("친구 아님", "FORBIDDEN", "친구의 유리병만 볼 수 있어요."),
+          "404": err("없는 유리병(JAR_NOT_FOUND) / 이미지 없음(IMAGE_NOT_FOUND — 정상 경로에선 발생 안 함)", "JAR_NOT_FOUND", "존재하지 않는 유리병이에요."),
+        },
       },
     },
     "/api/jars/{id}": {
@@ -262,18 +295,66 @@ export const openapi = {
       },
     },
 
-    "/api/friends": {
+    "/api/friend-requests": {
       post: {
         tags: ["친구"],
-        summary: "친구 추가 🔒 (분당 10회) — 정확한 닉네임 입력, 쌍방 즉시 성립",
-        requestBody: { content: { "application/json": { example: { friendLoginId: "데모친구" } } } },
+        summary:
+          "친구 요청 보내기 🔒 (분당 10회) — 설정 모달. 정확한 닉네임 입력. 상대가 이미 나에게 요청해 뒀으면 즉시 성립(status: accepted)",
+        requestBody: { content: { "application/json": { example: { toLoginId: "데모친구" } } } },
         responses: {
-          "201": ok("성립", { loginId: "데모친구" }),
-          "400": err("자기 자신", "SELF_FRIEND", "자기 자신은 추가할 수 없어요."),
+          "201": ok("요청 생성(pending) 또는 맞요청 즉시 성립(accepted)", { loginId: "데모친구", status: "pending" }),
+          "400": err("자기 자신", "SELF_FRIEND", "자기 자신에게는 친구 요청을 보낼 수 없어요."),
           "404": err("없는 닉네임", "USER_NOT_FOUND", "존재하지 않는 아이디예요."),
-          "409": err("이미 친구 / 내 한도(FRIEND_LIMIT_ME) / 상대 한도(FRIEND_LIMIT_TARGET) — 최대 10명", "ALREADY_FRIEND", "이미 친구예요."),
+          "409": err(
+            "이미 친구(ALREADY_FRIEND) / 이미 요청 보냄(REQUEST_ALREADY_SENT) / 상대 알림함 20건 가득(REQUEST_INBOX_FULL) / 내 한도(FRIEND_LIMIT_ME) / 맞요청 즉시 성립 경로에서 상대 한도(FRIEND_LIMIT_TARGET)",
+            "REQUEST_ALREADY_SENT",
+            "이미 친구 요청을 보냈어요.",
+          ),
         },
       },
+      get: {
+        tags: ["친구"],
+        summary: "받은 친구 요청 목록 🔒 — 종 아이콘 팝업. total이 빨간 점 배지 값 (0이면 점 없음)",
+        responses: {
+          "200": ok("대기 중인 받은 요청 (최신순)", {
+            total: 1,
+            requests: [
+              { id: "cmsreq0001okck", fromLoginId: "데모친구", createdAt: "2026-08-17T09:00:00.000Z" },
+            ],
+          }),
+        },
+      },
+    },
+    "/api/friend-requests/{id}/accept": {
+      post: {
+        tags: ["친구"],
+        summary: "친구 요청 수락 🔒 — 받은 사람만. 쌍방 친구 성립, 요청은 사라짐",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, example: "cmsreq0001okck" }],
+        responses: {
+          "200": ok("성립 — 새 친구 닉네임", { loginId: "데모친구" }),
+          "403": err("내가 받은 요청이 아님", "FORBIDDEN", "내가 받은 요청만 처리할 수 있어요."),
+          "404": err("이미 처리됐거나 없는 요청", "REQUEST_NOT_FOUND", "이미 처리됐거나 없는 요청이에요."),
+          "409": err(
+            "내 한도(FRIEND_LIMIT_ME) / 상대 한도(FRIEND_LIMIT_TARGET) — 요청은 보존되므로 친구를 비운 뒤 다시 수락 가능 / 이미 친구(ALREADY_FRIEND)",
+            "FRIEND_LIMIT_ME",
+            "내 친구가 가득 찼어요. (최대 10명)",
+          ),
+        },
+      },
+    },
+    "/api/friend-requests/{id}/reject": {
+      post: {
+        tags: ["친구"],
+        summary: "친구 요청 거절 🔒 — 받은 사람만. 요청 삭제 (상대에게 알리지 않음, 재신청 가능)",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, example: "cmsreq0001okck" }],
+        responses: {
+          "200": ok("거절 완료", { ok: true }),
+          "403": err("내가 받은 요청이 아님", "FORBIDDEN", "내가 받은 요청만 처리할 수 있어요."),
+          "404": err("이미 처리됐거나 없는 요청", "REQUEST_NOT_FOUND", "이미 처리됐거나 없는 요청이에요."),
+        },
+      },
+    },
+    "/api/friends": {
       get: {
         tags: ["친구"],
         summary: "친구 목록 🔒 — total은 설정 '9/10' 카운터용 (최대 10명, 페이지네이션 없음)",
