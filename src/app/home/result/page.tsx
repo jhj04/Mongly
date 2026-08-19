@@ -9,7 +9,7 @@ import EmotionCompositionModal from "@/components/home/EmotionCompositionModal";
 import EmotionGradientBlob from "@/components/home/EmotionGradientBlob";
 import { useTodayJar, useCompleteJar } from "@/hooks/useJars";
 import { useSnackbar } from "@/components/common/SnackbarProvider";
-import { useLocalJars, takePendingJarImage } from "@/hooks/useLocalJars";
+import { takePendingJarImage } from "@/hooks/useLocalJars";
 import { buildEmotionConicGradient } from "@/lib/emotionGradient";
 
 // 그라디언트가 빠르게 여러 바퀴 돌며 색이 섞이는 "로딩" 연출 시간(ms).
@@ -25,7 +25,6 @@ export default function JarResultPage() {
   const { showSnackbar } = useSnackbar();
   const { jar, draft, isLoading } = useTodayJar();
   const { completeJar, isLoading: isSaving } = useCompleteJar();
-  const { addLocalJar } = useLocalJars();
 
   const [showComposition, setShowComposition] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -48,15 +47,16 @@ export default function JarResultPage() {
   }, []);
 
   const handleSave = async () => {
-    const { error } = await completeJar();
+    const image = takePendingJarImage();
+    if (!image) {
+      showSnackbar("유리병 이미지를 불러오지 못했어요. 다시 시도해주세요.");
+      return;
+    }
+    const { error } = await completeJar({ image });
     if (error) {
       showSnackbar(error.message);
       return;
     }
-    // 백엔드가 아직 이미지를 안 받아주니 임시로 로컬에 캡처본을 확정 저장 —
-    // 나중에 API가 이미지를 내려주게 되면 이 부분은 지워도 됨.
-    const image = takePendingJarImage();
-    if (image) addLocalJar(image);
     showSnackbar("서재에 저장했어요!");
     setSaved(true);
   };
