@@ -35,7 +35,7 @@ export default function Jar({
 }: JarProps) {
   return (
     <div className="flex flex-1 items-center justify-center">
-      <div ref={jarRef} className="relative mt-10 w-[clamp(280px,55vw,480px)] aspect-square">
+      <div ref={jarRef} className="relative mt-10 w-[clamp(400px,60vw,500px)] aspect-square">
         <span
           className={
             "absolute top-0 sm:top-3 left-[48.3%] -translate-x-1/2 z-10 overflow-hidden rounded-full " +
@@ -65,7 +65,7 @@ export default function Jar({
               (bottle.png 실측: 몸통 좌우 166~590px, 어깨 상단 140px, 바닥 곡률 시작 680px / 782px 기준) */}
           <div
             ref={interiorRef}
-            className="absolute left-[21%] right-[25%] top-[18%] bottom-[18%] sm:left-[27%] sm:right-[30%] sm:bottom-[11%] overflow-hidden"
+            className="absolute left-[27%] right-[30%] top-[19%] bottom-[11%] sm:left-[27%] sm:right-[30%] sm:top-[18%] sm:bottom-[11%] overflow-hidden"
           >
             <JarBeads beads={beads} registerBeadEl={registerBeadEl} />
           </div>
