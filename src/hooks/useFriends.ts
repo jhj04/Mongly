@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFriends, getFriendsJars, addFriend, deleteFriends, Friend, FriendShelfEntry } from "@/lib/api/friends";
+import {
+  getFriends,
+  getFriendsJars,
+  sendFriendRequest,
+  deleteFriends,
+  Friend,
+  FriendShelfEntry,
+} from "@/lib/api/friends";
 import { ApiError } from "@/lib/axios";
 
 function toApiError(e: unknown): ApiError {
@@ -65,16 +72,16 @@ export function useFriendsJars() {
   return { friends, isLoading, error, refetch };
 }
 
-// 설정 페이지 친구 추가 — loginId로 바로 추가(현재는 즉시 성립, 추후 요청-승인 방식으로 변경 예정)
-export function useAddFriend() {
+// 설정 페이지 친구 추가 — 요청을 보냄(상대가 이미 나에게 요청해 뒀으면 즉시 성립)
+export function useSendFriendRequest() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const submit = async (friendLoginId: string) => {
+  const submit = async (toLoginId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await addFriend({ friendLoginId });
+      const result = await sendFriendRequest({ toLoginId });
       return { result, error: null as ApiError | null };
     } catch (e) {
       const apiError = toApiError(e);
@@ -85,7 +92,7 @@ export function useAddFriend() {
     }
   };
 
-  return { addFriend: submit, isLoading, error };
+  return { sendFriendRequest: submit, isLoading, error };
 }
 
 // 설정 페이지 친구 삭제 — 선택한 loginId들을 한 번에 해제(전체 성공/전체 실패)

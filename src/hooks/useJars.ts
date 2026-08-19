@@ -14,6 +14,7 @@ import {
   Jar,
   JarDraft,
   AddDraftEmotionRequest,
+  CompleteJarRequest,
 } from "@/lib/api/jars";
 import { ApiError } from "@/lib/axios";
 
@@ -124,17 +125,17 @@ export function useRemoveDraftEmotion() {
   return { removeDraftEmotion: submit, isLoading, error };
 }
 
-// 완성하기 — 오늘 드래프트를 유리병으로 확정. 서재가 가득 찼으면(JAR_LIMIT)
+// 완성하기 — 렌더한 유리병 PNG와 함께 오늘 드래프트를 유리병으로 확정. 서재가 가득 찼으면(JAR_LIMIT)
 // error.details.jars에 현재 서재 목록이 함께 내려옴(드래프트는 유지됨).
 export function useCompleteJar() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const submit = async () => {
+  const submit = async (data: CompleteJarRequest) => {
     setIsLoading(true);
     setError(null);
     try {
-      const jar = await completeJar();
+      const jar = await completeJar(data);
       return { jar, error: null as ApiError | null };
     } catch (e) {
       const apiError = toApiError(e);
