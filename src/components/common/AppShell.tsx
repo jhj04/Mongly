@@ -21,7 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }`}
       style={{
         backgroundPosition: isOnboarding
-          ? "center calc(50% - 6rem)"
+          ? "center calc(50% - 5rem)"
           : isStudy || isFriends
           ? "center calc(50%)"
           : "center calc(50%)",
