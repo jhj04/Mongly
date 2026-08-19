@@ -57,9 +57,17 @@ export const addDraftEmotion = (data: AddDraftEmotionRequest) =>
 export const removeDraftEmotion = () =>
   api.delete<JarDraft>("/api/jars/draft/emotions").then((res) => res.data);
 
-// 완성하기 — 바디 없음. 오늘 드래프트를 유리병으로 확정하고 드래프트는 비움.
-// 서재가 가득 찼으면(JAR_LIMIT) 409, details.jars에 현재 목록이 딸려옴
-export const completeJar = () => api.post<Jar>("/api/jars").then((res) => res.data);
+export interface CompleteJarRequest {
+  // canvas.toDataURL('image/png') 값(순수 base64도 허용), 원본 1MB 이하
+  image: string;
+}
+
+// 완성하기 — 프론트가 렌더한 유리병 PNG와 함께 오늘 드래프트를 유리병으로 확정하고 드래프트는 비움.
+// 담은 감정 없으면 DRAFT_EMPTY, image 누락은 VALIDATION, PNG 아니거나 base64 오류는 IMAGE_INVALID(400)
+// 원본 1MB 초과는 IMAGE_TOO_LARGE(413)
+// 오늘 이미 완성했으면 JAR_ALREADY_TODAY, 서재가 가득 찼으면 JAR_LIMIT(409, details.jars에 현재 목록)
+export const completeJar = (data: CompleteJarRequest) =>
+  api.post<Jar>("/api/jars", data).then((res) => res.data);
 
 export interface JarsListResponse {
   jars: Jar[];
@@ -74,3 +82,6 @@ export const getJar = (id: string) => api.get<Jar>(`/api/jars/${id}`).then((res)
 // 삭제하기 — 본인 소유 유리병만
 export const deleteJar = (id: string) =>
   api.delete<{ ok: boolean }>(`/api/jars/${id}`).then((res) => res.data);
+
+// 유리병 PNG — 서재·친구 탭 렌더용. 본인 또는 친구만. <img src>에 바로 사용
+export const getJarImageUrl = (id: string) => `/api/jars/${id}/image`;
