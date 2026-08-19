@@ -4,12 +4,12 @@ import { useState } from "react";
 import Button from "@/components/common/Button";
 import CircleCheckbox from "@/components/common/CircleCheckbox";
 import AddFriendModal from "@/components/common/AddFriendModal";
-import { useFriendsList, useAddFriend, useDeleteFriends } from "@/hooks/useFriends";
+import { useFriendsList, useSendFriendRequest, useDeleteFriends } from "@/hooks/useFriends";
 import { useSnackbar } from "@/components/common/SnackbarProvider";
 
 export default function FriendsSection() {
   const { friends, total, isLoading, refetch } = useFriendsList();
-  const { addFriend, isLoading: isAdding } = useAddFriend();
+  const { sendFriendRequest, isLoading: isAdding } = useSendFriendRequest();
   const { deleteFriends, isLoading: isDeleting } = useDeleteFriends();
   const { showSnackbar } = useSnackbar();
   const [selected, setSelected] = useState<string[]>([]);
@@ -34,14 +34,18 @@ export default function FriendsSection() {
 
   const handleAddFriend = async (loginId: string) => {
     if (!loginId) return;
-    const { error } = await addFriend(loginId);
+    const { result, error } = await sendFriendRequest(loginId);
     if (error) {
       showSnackbar(error.message);
       return;
     }
-    showSnackbar("친구를 추가했어요.");
     setShowAddModal(false);
-    refetch();
+    if (result?.status === "accepted") {
+      showSnackbar("친구가 됐어요!");
+      refetch();
+    } else {
+      showSnackbar("친구 요청을 보냈어요.");
+    }
   };
 
   return (

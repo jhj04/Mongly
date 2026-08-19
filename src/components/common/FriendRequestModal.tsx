@@ -4,12 +4,12 @@ import { PiX } from "react-icons/pi";
 import { glassSurface } from "@/lib/styles";
 import Button from "./Button";
 import Portal from "./Portal";
-import type { FriendRequest } from "@/hooks/useFriendRequests";
+import type { FriendRequestItem } from "@/lib/api/friends";
 
 interface FriendRequestModalProps {
-  requests: FriendRequest[];
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
+  requests: FriendRequestItem[];
+  onAccept: (id: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -33,9 +33,6 @@ export default function FriendRequestModal({
           </button>
 
           <h2 className="relative z-10 text-center font-point text-2xl text-primary-800">친구 요청</h2>
-          <p className="relative z-10 mt-3 text-center text-sm text-primary-900">
-            팔로우 요청이 도착했어요. 확인하거나 삭제해 주세요.
-          </p>
 
           <div className="relative z-10 mt-10 flex flex-col gap-5">
             {requests.length === 0 ? (
@@ -43,7 +40,7 @@ export default function FriendRequestModal({
             ) : (
               requests.map((request) => (
                 <div key={request.id} className="flex items-center justify-between gap-3">
-                  <span className="truncate text-base text-primary-900">{request.loginId}</span>
+                  <span className="truncate text-base text-primary-900">{request.fromLoginId}</span>
                   <div className="flex flex-shrink-0 gap-2">
                     <Button label="확인" variant="filled" size="sm" onClick={() => onAccept(request.id)} />
                     <Button label="삭제" variant="outlined" size="sm" onClick={() => onReject(request.id)} />
