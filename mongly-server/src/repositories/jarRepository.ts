@@ -39,11 +39,6 @@ export const jarRepository = {
     return prisma.jar.findUnique({ where: { id }, include: withEmotions });
   },
 
-  // 이미지 블롭은 이 함수로만 읽는다 — 목록/상세 조회에 섞이면 블롭이 매 응답에 실려 나감
-  findImageByJarId(jarId: string) {
-    return prisma.jarImage.findUnique({ where: { jarId } });
-  },
-
   deleteById(id: string) {
     return prisma.jar.delete({ where: { id } }); // JarEmotion은 Cascade
   },

@@ -20,15 +20,7 @@ export function createApp() {
   app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS ?? 1));
 
   app.use(requireJson);
-  // 큰 바디(2mb)는 유리병 PNG(원본 1MB의 base64, ±37%)가 실려 오는 완성하기 한 곳에만 허용하고
-  // 나머지 전부(비인증·미존재 경로 포함)는 기본 100kb 유지 — 전역 2mb는 커넥션당 버퍼링을 20배 키우는 DoS 표면이 된다.
-  // 초과 시 413 INVALID_BODY — 이미지 자체의 1MB 판정(413 IMAGE_TOO_LARGE)은 lib/image가 담당
-  const jsonDefault = express.json();
-  const jsonLarge = express.json({ limit: "2mb" });
-  app.use((req, res, next) => {
-    const isComplete = req.method === "POST" && req.path.replace(/\/+$/, "") === "/api/jars";
-    return (isComplete ? jsonLarge : jsonDefault)(req, res, next);
-  });
+  app.use(express.json());
   app.use(cookieParser());
 
   app.use("/api", healthRouter);

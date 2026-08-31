@@ -42,19 +42,8 @@ model Jar {
   recordDate DateTime     @db.Date // KST 기준 날짜 — 반드시 getKstToday()로만 생성
   createdAt  DateTime     @default(now())
   emotions   JarEmotion[]
-  image      JarImage?
 
   @@unique([userId, recordDate]) // 하루 1병
-}
-
-// 완성 시 프론트가 렌더해 보낸 유리병 PNG (병당 1장, 불변).
-// 목록 조회(findMany)가 블롭을 끌어오지 않도록 Jar와 1:1 별도 테이블로 분리 — 바이너리는 GET /jars/:id/image에서만 읽는다
-model JarImage {
-  jarId     String   @id
-  jar       Jar      @relation(fields: [jarId], references: [id], onDelete: Cascade)
-  data      Bytes // PNG 원본 (최대 1MB — 서비스에서 검증)
-  size      Int // 바이트 수 — 용량 모니터링용
-  createdAt DateTime @default(now())
 }
 
 // 유리병에 담긴 감정 — 순서 무관, 같은 감정은 count로 집계 (병당 합계 1~7)

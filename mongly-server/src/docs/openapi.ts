@@ -26,10 +26,9 @@ const JAR = {
     { emotionId: 2, name: "슬픔", colorHex: "#4966B6", count: 1 },
     { emotionId: 3, name: "분노", colorHex: "#F05B5B", count: 2 },
   ],
-  imageUrl: "/api/jars/cms5vyadq0002okckkilawdcs/image",
 };
 
-// 담는 중 드래프트 — 유리병과 형태 동일(단 id·recordDate·imageUrl 없고 total 있음). 빈 병이면 total 0
+// 담는 중 드래프트 — 유리병과 형태 동일(단 id·recordDate 없고 total 있음). 빈 병이면 total 0
 const DRAFT = {
   total: 2,
   dominantEmotionId: 3,
@@ -44,7 +43,6 @@ const FRIEND_JAR = {
     { emotionId: 1, name: "기쁨", colorHex: "#FFD54A", count: 1 },
     { emotionId: 4, name: "놀람", colorHex: "#7ED9F8", count: 1 },
   ],
-  imageUrl: "/api/jars/cms5vyenk0005okckvt3h5c5q/image",
 };
 
 const EMOTIONS = [
@@ -70,13 +68,13 @@ export const openapi = {
       "로그인은 이메일+비밀번호(닉네임=loginId는 친구 추가 키·표시명). " +
       "인증: httpOnly 쿠키(mongly_token) — 로그인/회원가입을 Try it out으로 실행하면 쿠키가 저장되어 이후 🔒 API가 동작. " +
       "감정 담기는 드래그 1회 = POST /jars/draft/emotions(즉시 저장), 되돌리기 = DELETE, " +
-      "완성 = POST /jars에 프론트가 렌더한 유리병 PNG(base64)를 담아 확정 — 이미지는 GET /jars/:id/image로 서빙. " +
+      "완성 = POST /jars로 오늘 드래프트를 확정(서버 감정 데이터 유일한 진실). 서재 7개 초과 시 가장 오래된 유리병 자동 삭제(FIFO). " +
       "친구는 요청 → 수락으로 성립(종 아이콘 알림). 상세: docs/API.md",
   },
   tags: [
     { name: "인증", description: "이메일 회원가입·로그인·세션" },
     { name: "계정", description: "설정 탭 — 닉네임/비밀번호/탈퇴" },
-    { name: "유리병", description: "몽글리 탭 — 드래그로 담기/되돌리기/완성(PNG 포함), 서재" },
+    { name: "유리병", description: "몽글리 탭 — 드래그로 담기/되돌리기/완성, 서재" },
     { name: "친구", description: "친구 탭·설정 탭·종 아이콘 — 친구 요청/수락과 친구 서재" },
     { name: "기타", description: "헬스체크" },
   ],
@@ -225,51 +223,17 @@ export const openapi = {
     "/api/jars": {
       post: {
         tags: ["유리병"],
-        summary:
-          "완성하기 🔒 — 서버 드래프트를 확정 + 프론트가 렌더한 유리병 PNG 저장. image는 canvas.toDataURL('image/png') 값(순수 base64도 허용), 원본 1MB 이하",
-        requestBody: {
-          content: {
-            "application/json": {
-              example: { image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...(생략)" },
-            },
-          },
-        },
+        summary: "완성하기 🔒 — 서버 오늘 드래프트를 확정해 유리병으로 생성 (서재 7개 이상 시 가장 오래된 유리병 자동 삭제)",
         responses: {
-          "201": ok("생성된 유리병 — 이 id를 상세/삭제/이미지에 사용. 드래프트는 비워짐", JAR),
-          "400": err(
-            "담은 감정이 없음(DRAFT_EMPTY) / image 누락(VALIDATION) / PNG가 아니거나 base64 오류(IMAGE_INVALID)",
-            "IMAGE_INVALID",
-            "이미지는 PNG(base64)만 업로드할 수 있어요.",
-          ),
-          "409": err(
-            "오늘 이미 완성(JAR_ALREADY_TODAY) / 서재 가득(JAR_LIMIT — details.jars에 현재 7개, 드래프트는 보존)",
-            "JAR_LIMIT",
-            "서재가 가득 찼어요. 유리병을 비우고 다시 담아주세요.",
-            { jars: [JAR] },
-          ),
-          "413": err("원본 1MB 초과", "IMAGE_TOO_LARGE", "이미지는 1MB 이하여야 해요."),
+          "201": ok("생성된 유리병 — 이 id를 상세/삭제에 사용. 드래프트는 비워짐", JAR),
+          "400": err("담은 감정이 없음", "DRAFT_EMPTY", "담은 감정이 없어요."),
+          "409": err("오늘 이미 완성", "JAR_ALREADY_TODAY", "오늘의 유리병은 이미 완성했어요."),
         },
       },
       get: {
         tags: ["유리병"],
         summary: "서재 🔒 — 내 유리병 목록 (최대 7개, 날짜 내림차순). 각 항목의 id로 상세/삭제",
         responses: { "200": ok("유리병 목록", { jars: [JAR] }) },
-      },
-    },
-    "/api/jars/{id}/image": {
-      get: {
-        tags: ["유리병"],
-        summary:
-          "유리병 PNG 🔒 — 서재·친구 탭 렌더용. 본인 또는 친구만. 응답은 image/png 바이너리 (1시간 캐시 + ETag 재검증 — 재검증 시 접근 제어 재실행)",
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, example: JAR.id }],
-        responses: {
-          "200": {
-            description: "PNG 바이너리 (Cache-Control: private, max-age=3600)",
-            content: { "image/png": { schema: { type: "string", format: "binary" } } },
-          },
-          "403": err("친구 아님", "FORBIDDEN", "친구의 유리병만 볼 수 있어요."),
-          "404": err("없는 유리병(JAR_NOT_FOUND) / 이미지 없음(IMAGE_NOT_FOUND — 정상 경로에선 발생 안 함)", "JAR_NOT_FOUND", "존재하지 않는 유리병이에요."),
-        },
       },
     },
     "/api/jars/{id}": {

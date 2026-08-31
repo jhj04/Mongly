@@ -2,7 +2,6 @@
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../app";
-import { JAR_IMAGE_MAX_BYTES } from "../lib/image";
 import { prisma } from "../lib/prisma";
 import { kstDateToDb } from "../utils/kst";
 
@@ -10,11 +9,6 @@ process.env.JWT_SECRET ??= "test-secret";
 
 const uid = `j${Date.now().toString(36)}`;
 const PW = "password123";
-
-// 1×1 투명 PNG — 완성하기 이미지 페이로드 (프론트 canvas.toDataURL 대역)
-const TINY_PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-const IMAGE_BODY = { image: `data:image/png;base64,${TINY_PNG_B64}` };
 
 const app = createApp();
 const owner = request.agent(app);
@@ -120,62 +114,33 @@ describe("드래프트: 담기 / 되돌리기 / 오늘 상태", () => {
 describe("완성 / 조회 / 삭제", () => {
   beforeEach(resetToday);
 
-  it("완성하기(PNG 포함) 201 → 드래프트가 유리병으로, imageUrl 포함, 드래프트는 비워짐", async () => {
+  it("완성하기 201 → 드래프트가 유리병으로(감정 데이터 포함), 드래프트는 비워짐", async () => {
     await drag(owner, 6);
     await drag(owner, 1);
     await drag(owner, 1);
-    const res = await owner.post("/api/jars").send(IMAGE_BODY);
+    const res = await owner.post("/api/jars").send();
     expect(res.status).toBe(201);
     expect(res.body.dominantEmotionId).toBe(1);
     expect(res.body.emotions).toHaveLength(2);
     expect(res.body.id).toBeTruthy();
-    expect(res.body.imageUrl).toBe(`/api/jars/${res.body.id}/image`);
+    expect(res.body.imageUrl).toBeUndefined();
 
     // 완성 후 오늘 상태는 완성본 + draft:null
     const today = await owner.get("/api/jars/today");
     expect(today.body.jar.id).toBe(res.body.id);
+    expect(today.body.jar.emotions).toHaveLength(2);
     expect(today.body.draft).toBeNull();
   });
 
-  it("이미지 없이 완성 → 400 VALIDATION", async () => {
-    await drag(owner, 2);
-    const res = await owner.post("/api/jars").send();
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("VALIDATION");
-  });
-
-  it("PNG가 아닌 이미지로 완성 → 400 IMAGE_INVALID (드래프트 보존)", async () => {
-    await drag(owner, 2);
-    const res = await owner
-      .post("/api/jars")
-      .send({ image: Buffer.from("not a png").toString("base64") });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("IMAGE_INVALID");
-
-    const state = await owner.get("/api/jars/today");
-    expect(state.body.draft.total).toBe(1); // 실패했으니 드래프트 그대로
-  });
-
-  it("1MB 초과 이미지로 완성 → 413 IMAGE_TOO_LARGE", async () => {
-    await drag(owner, 2);
-    const big = Buffer.concat([
-      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      Buffer.alloc(JAR_IMAGE_MAX_BYTES),
-    ]);
-    const res = await owner.post("/api/jars").send({ image: big.toString("base64") });
-    expect(res.status).toBe(413);
-    expect(res.body.error.code).toBe("IMAGE_TOO_LARGE");
-  });
-
   it("빈 병 완성 → 400 DRAFT_EMPTY", async () => {
-    const res = await owner.post("/api/jars").send(IMAGE_BODY);
+    const res = await owner.post("/api/jars").send();
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("DRAFT_EMPTY");
   });
 
   it("완성 후 재드래그 → 409 JAR_ALREADY_TODAY", async () => {
     await drag(owner, 2);
-    await owner.post("/api/jars").send(IMAGE_BODY);
+    await owner.post("/api/jars").send();
     const again = await drag(owner, 3);
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("JAR_ALREADY_TODAY");
@@ -183,15 +148,15 @@ describe("완성 / 조회 / 삭제", () => {
 
   it("완성 후 재완성 → 409 JAR_ALREADY_TODAY", async () => {
     await drag(owner, 2);
-    await owner.post("/api/jars").send(IMAGE_BODY);
-    const again = await owner.post("/api/jars").send(IMAGE_BODY);
+    await owner.post("/api/jars").send();
+    const again = await owner.post("/api/jars").send();
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("JAR_ALREADY_TODAY");
   });
 
   it("서재 목록 / 남의 상세 403 / 삭제 본인만", async () => {
     await drag(owner, 6);
-    const jar = await owner.post("/api/jars").send(IMAGE_BODY);
+    const jar = await owner.post("/api/jars").send();
     const jarId = jar.body.id;
 
     const list = await owner.get("/api/jars");
@@ -205,33 +170,14 @@ describe("완성 / 조회 / 삭제", () => {
     const today = await owner.get("/api/jars/today");
     expect(today.body.jar).toBeNull();
   });
-
-  it("GET /jars/:id/image — 본인 200 image/png(업로드 원본 그대로) / 남 403 / 삭제 후 404", async () => {
-    await drag(owner, 4);
-    const jar = await owner.post("/api/jars").send(IMAGE_BODY);
-    const jarId = jar.body.id;
-
-    const img = await owner.get(`/api/jars/${jarId}/image`);
-    expect(img.status).toBe(200);
-    expect(img.headers["content-type"]).toContain("image/png");
-    expect(img.headers["cache-control"]).toBe("private, max-age=3600");
-    expect(Buffer.from(img.body).equals(Buffer.from(TINY_PNG_B64, "base64"))).toBe(true);
-
-    const forbidden = await stranger.get(`/api/jars/${jarId}/image`);
-    expect(forbidden.status).toBe(403);
-
-    await owner.delete(`/api/jars/${jarId}`).send(); // JarImage는 Cascade 삭제
-    const gone = await owner.get(`/api/jars/${jarId}/image`);
-    expect(gone.status).toBe(404);
-    expect(gone.body.error.code).toBe("JAR_NOT_FOUND");
-  });
 });
 
-describe("서재 7개 제한", () => {
+describe("서재 7개 보관 및 FIFO 자동 삭제", () => {
   beforeEach(resetToday);
 
-  it("과거 7병 보관 중 오늘 완성 → 409 JAR_LIMIT + 드래프트 보존", async () => {
-    // 하루 1병 제약 때문에 과거 날짜 7병은 직접 삽입 (백데이트)
+  it("과거 7병 보관 중 오늘 완성 → 가장 오래된 병 자동 삭제 후 201, 총 7병 유지", async () => {
+    // 과거 날짜 7병 삽입 (1~7일 전)
+    const oldestDate = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     for (let i = 1; i <= 7; i++) {
       const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
       await prisma.jar.create({
@@ -242,15 +188,22 @@ describe("서재 7개 제한", () => {
         },
       });
     }
-    await drag(owner, 3);
-    const res = await owner.post("/api/jars").send(IMAGE_BODY);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("JAR_LIMIT");
-    expect(res.body.error.details.jars).toHaveLength(7);
 
-    // 드래프트는 보존되어 서재 비운 뒤 재완성 가능
-    const state = await owner.get("/api/jars/today");
-    expect(state.body.draft.total).toBe(1);
+    const beforeCount = await prisma.jar.count({ where: { userId: ownerId } });
+    expect(beforeCount).toBe(7);
+
+    // 오늘 감정 담고 완성하기
+    await drag(owner, 3);
+    const res = await owner.post("/api/jars").send();
+    expect(res.status).toBe(201);
+
+    // 전체 개수는 여전히 7개 유지
+    const listRes = await owner.get("/api/jars");
+    expect(listRes.body.jars).toHaveLength(7);
+
+    // 가장 오래된 병(7일 전)은 삭제되었고 오늘 병이 포함됨
+    const dates = listRes.body.jars.map((j: any) => j.recordDate);
+    expect(dates).not.toContain(oldestDate);
 
     await prisma.jar.deleteMany({ where: { userId: ownerId } });
   });

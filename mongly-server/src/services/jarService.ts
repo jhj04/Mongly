@@ -28,7 +28,6 @@ async function enrich(counts: { emotionId: number; count: number }[]) {
 }
 
 // 유리병 응답 (id·recordDate 포함)
-// imageUrl: 완성 시 이미지가 함께 저장되므로 항상 존재 — 프론트는 <img src={imageUrl}>로 렌더 (쿠키 자동 전송)
 export function toJarResponse(jar: JarWithEmotions) {
   const emotions = jar.emotions.map((je) => ({
     emotionId: je.emotionId,
@@ -41,7 +40,6 @@ export function toJarResponse(jar: JarWithEmotions) {
     recordDate: jar.recordDate.toISOString().slice(0, 10),
     dominantEmotionId: dominantEmotionId(emotions),
     emotions,
-    imageUrl: `/api/jars/${jar.id}/image`,
   };
 }
 
@@ -108,8 +106,7 @@ export const jarService = {
   },
 
   // 완성하기 — 서버에 저장된 오늘 드래프트를 확정해 유리병으로.
-  // image: 프론트가 렌더한 유리병 PNG (라우트에서 디코드·검증 완료) — 유리병과 한 트랜잭션으로 저장
-  async completeJar(userId: string, image: Buffer) {
+  async completeJar(userId: string) {
     const today = kstDateToDb(getKstToday());
     await draftRepository.clearStale(userId, today);
 
@@ -129,17 +126,21 @@ export const jarService = {
           throw new AppError(409, "DRAFT_FULL", "감정이 너무 많아요. 되돌리기로 7개 이하로 맞춰주세요.");
         }
 
-        // 서재 7개 제한 (오늘 완성본은 위에서 배제했으므로 이 경로의 7개는 모두 과거 날짜)
+        // 서재 7개 제한: 7개 이상이면 가장 오래된 유리병을 삭제하여 항상 최대 7개 유지 (FIFO)
         const jarCount = await tx.jar.count({ where: { userId } });
         if (jarCount >= JAR_LIMIT) {
-          const jars = await tx.jar.findMany({
+          const toDeleteCount = jarCount - JAR_LIMIT + 1;
+          const oldestJars = await tx.jar.findMany({
             where: { userId },
-            include: withEmotions,
-            orderBy: { recordDate: "desc" },
+            orderBy: { recordDate: "asc" },
+            take: toDeleteCount,
+            select: { id: true },
           });
-          throw new AppError(409, "JAR_LIMIT", "서재가 가득 찼어요. 유리병을 비우고 다시 담아주세요.", {
-            jars: jars.map(toJarResponse),
-          });
+          if (oldestJars.length > 0) {
+            await tx.jar.deleteMany({
+              where: { id: { in: oldestJars.map((j) => j.id) } },
+            });
+          }
         }
 
         const created = await tx.jar.create({
@@ -149,10 +150,6 @@ export const jarService = {
             emotions: { create: counts.map((c) => ({ emotionId: c.emotionId, count: c.count })) },
           },
           include: withEmotions,
-        });
-        await tx.jarImage.create({
-          // Prisma 6의 Bytes는 Uint8Array<ArrayBuffer>를 요구 — Buffer 그대로는 타입 불일치라 복사
-          data: { jarId: created.id, data: new Uint8Array(image), size: image.length },
         });
         await draftRepository.clear(userId, today, tx); // 완성됐으니 드래프트 비움
         return created;
@@ -183,22 +180,6 @@ export const jarService = {
       if (!friendship) throw new AppError(403, "FORBIDDEN", "친구의 유리병만 볼 수 있어요.");
     }
     return toJarResponse(jar);
-  },
-
-  // 유리병 PNG — 접근 제어는 상세 열람과 동일(본인 또는 친구). 블롭은 이 경로에서만 DB에서 읽는다
-  async getJarImageForViewer(viewerId: string, jarId: string) {
-    const jar = await jarRepository.findById(jarId);
-    if (!jar) throw new AppError(404, "JAR_NOT_FOUND", "존재하지 않는 유리병이에요.");
-
-    if (jar.userId !== viewerId) {
-      const friendship = await friendRepository.find(viewerId, jar.userId);
-      if (!friendship) throw new AppError(403, "FORBIDDEN", "친구의 유리병만 볼 수 있어요.");
-    }
-
-    const image = await jarRepository.findImageByJarId(jarId);
-    // 정상 경로에선 없을 수 없음(완성과 한 트랜잭션) — 방어적 404
-    if (!image) throw new AppError(404, "IMAGE_NOT_FOUND", "유리병 이미지가 없어요.");
-    return image;
   },
 
   async deleteJar(userId: string, jarId: string) {

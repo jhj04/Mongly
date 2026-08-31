@@ -78,7 +78,7 @@
 - 닉네임(loginId): **2~16자, 한글/영문/숫자** (공백·특수문자 불가)
 - 비밀번호: **8자 이상**, 72바이트 이하(한글 24자 상당)
 - 감정: 유리병당 **합계 1~7개**, 같은 감정은 여러 번 드래그하면 `count`로 집계
-- 완성 이미지: **PNG만, 원본 1MB 이하** — `canvas.toDataURL("image/png")` 값을 그대로 보내면 됨 (권장 해상도 512~768px. 서재 7병 제한 덕에 유저당 이미지 총량도 최대 7MB로 유계)
+- 서재: 최대 7개 보관 (7개 보관 중 새 유리병을 완성하면 **가장 오래된 유리병이 자동으로 삭제(FIFO)**됨)
 
 ### 유리병(Jar) 객체 — 공통 형태
 
@@ -90,15 +90,13 @@
   "emotions": [
     { "emotionId": 2, "name": "슬픔", "colorHex": "#4966B6", "count": 1 },
     { "emotionId": 3, "name": "분노", "colorHex": "#F05B5B", "count": 2 }
-  ],
-  "imageUrl": "/api/jars/clx8f2k.../image"
+  ]
 }
 ```
 
 - `dominantEmotionId`: 최다 감정. **동률이면 `null`** → "여러 감정이 고르게 섞였어요"
-- `imageUrl`: 완성 시 업로드된 **유리병 PNG** 경로 — 서재·친구 탭은 `<img src={imageUrl}>`로 렌더 (같은 출처라 쿠키 자동 전송, 병당 1장 불변이라 브라우저가 캐시함)
-- 색 조합은 프론트 담당 — `emotions[].colorHex`(기준색)를 재료로 캐릭터 보기 화면에 칠한다
-- **드래프트(담는 중) 객체**도 같은 형태지만 `id`·`recordDate`·`imageUrl`이 없고 `total`이 있음: `{ "total": 3, "dominantEmotionId": 3, "emotions": [...] }` (빈 병이면 `total: 0`, `emotions: []`)
+- 색 조합 및 렌더링은 프론트 담당 — `emotions[].colorHex`(기준색)와 `count`를 재료로 서재 및 캐릭터 보기 화면에 렌더링
+- **드래프트(담는 중) 객체**도 같은 형태지만 `id`·`recordDate`가 없고 `total`이 있음: `{ "total": 3, "dominantEmotionId": 3, "emotions": [...] }` (빈 병이면 `total: 0`, `emotions: []`)
 
 ---
 
@@ -226,33 +224,30 @@
 ```
 에러: `409 DRAFT_EMPTY`(되돌릴 감정이 없음)
 
-### POST /api/jars 🔒 — 완성하기 (+ 유리병 PNG 업로드)
+### POST /api/jars 🔒 — 완성하기
 
-서버에 저장된 오늘 드래프트를 유리병으로 확정하면서, **프론트가 렌더한 유리병 PNG를 함께 저장**한다.
+서버에 저장된 오늘 드래프트를 유리병으로 확정한다. 서재에 이미 7병이 보관되어 있는 경우, 가장 오래된 유리병이 자동으로 삭제(FIFO)된다.
 
 ```json
-// 요청 — image는 canvas.toDataURL("image/png") 값 그대로 (data URL 접두어 있어도, 순수 base64여도 됨)
-{ "image": "data:image/png;base64,iVBORw0KGgo..." }
-// 201 — 유리병 객체 그대로 (드래프트는 비워짐). imageUrl로 즉시 렌더 가능
-{ "id": "...", "recordDate": "2026-08-17", "dominantEmotionId": 3, "emotions": [ ... ], "imageUrl": "/api/jars/.../image" }
+// 요청: 바디 없음
+// 201 — 유리병 객체 (드래프트는 비워짐)
+{
+  "id": "clx8f2k...",
+  "recordDate": "2026-08-17",
+  "dominantEmotionId": 3,
+  "emotions": [
+    { "emotionId": 2, "name": "슬픔", "colorHex": "#4966B6", "count": 1 },
+    { "emotionId": 3, "name": "분노", "colorHex": "#F05B5B", "count": 2 }
+  ]
+}
 ```
 에러:
-- `400 VALIDATION` — `image` 필드 누락
-- `400 IMAGE_INVALID` — PNG가 아니거나 base64가 깨짐
-- `413 IMAGE_TOO_LARGE` — 원본 1MB 초과 (`413 INVALID_BODY`는 본문 자체가 2MB 초과일 때)
 - `400 DRAFT_EMPTY` — 담은 감정이 없음
 - `409 JAR_ALREADY_TODAY` — "오늘의 유리병은 이미 완성했어요"
-- `409 JAR_LIMIT` — `details.jars`에 현재 7개 목록 포함 → "서재에서 비우고 다시 담아주세요". **드래프트는 보존**되므로 서재를 비운 뒤 다시 완성하면 됨
 
 ### GET /api/jars 🔒 — 서재
 
-`200 { "jars": [ <유리병>... ] }` — 최대 7개, 날짜 내림차순. 각 유리병의 `imageUrl`로 선반 이미지를 렌더
-
-### GET /api/jars/:id/image 🔒 — 유리병 PNG (서재·친구 탭 렌더용)
-
-**본인 또는 친구만.** 응답은 JSON이 아니라 **`image/png` 바이너리** — `<img src="/api/jars/:id/image">`로 쓰면 된다.
-캐시는 `Cache-Control: private, max-age=3600` + ETag — 1시간 안에는 재다운로드 없고, 그 뒤엔 재검증(304)만 오간다. 재검증 때 접근 제어가 다시 실행되므로 친구 삭제·병 삭제 후 캐시가 무한정 살아남지 않는다.
-에러: `403 FORBIDDEN` / `404 JAR_NOT_FOUND` / `404 IMAGE_NOT_FOUND`(방어적 — 정상 경로에선 없음)
+`200 { "jars": [ <유리병>... ] }` — 최대 7개, 날짜 내림차순.
 
 ### GET /api/jars/:id 🔒 — 유리병 상세 (캐릭터 보기 / 감정 구성 보기)
 
@@ -333,14 +328,14 @@
 // 200
 {
   "friends": [
-    { "loginId": "허수현", "jar": { "id": "cmr...", "recordDate": "2026-08-15", "dominantEmotionId": 3, "emotions": [ ... ], "imageUrl": "/api/jars/cmr.../image" } },
+    { "loginId": "허수현", "jar": { "id": "cmr...", "recordDate": "2026-08-15", "dominantEmotionId": 3, "emotions": [ { "emotionId": 3, "name": "분노", "colorHex": "#F05B5B", "count": 2 } ] } },
     { "loginId": "7월제철음식", "jar": null }
   ]
 }
 ```
 
 - `jar: null` = 유리병을 하나도 완성하지 않은 친구 → **비활성 슬롯**으로 렌더
-- 선반 이미지는 `jar.imageUrl`로 렌더 (친구 접근 허용됨), 유리병 클릭 → 그 `jar.id`로 `GET /api/jars/:id` (캐릭터 보기)
+- 선반 및 캐릭터는 내려온 `jar.emotions` 데이터로 프론트엔드가 직접 렌더링, 유리병 클릭 → 그 `jar.id`로 `GET /api/jars/:id` (캐릭터 보기)
 
 ---
 
@@ -357,8 +352,7 @@
 1. **401 전역 처리**: `UNAUTHORIZED`(401)를 받으면 로그인 화면으로. 단 `WRONG_PASSWORD`는 400이므로 이 흐름에 걸리지 않음 (의도된 설계)
 2. **로그인 가드**: Next 16에서는 `middleware.ts`가 아니라 **`proxy.ts`** — 쿠키 존재만 확인하는 낙관적 체크로 리다이렉트하고, 최종 판정은 API 401에 맡길 것
 3. **오늘 판정**: 자정 넘김/시차 문제가 있으므로 반드시 `GET /api/jars/today`로. 프론트에서 `new Date()`로 날짜 비교 금지
-4. **색 조합**: 백엔드는 최종 색을 계산하지 않음 — `emotions[].colorHex` × `count` 가중으로 프론트가 조합. 드래프트도 같은 형태라 유리병 렌더 컴포넌트를 그대로 재사용 가능(단 `id`·`recordDate`·`imageUrl`은 optional 처리)
+4. **색 조합 및 렌더링**: 백엔드는 최종 색을 계산하지 않음 — `emotions[].colorHex` × `count` 가중으로 프론트가 조합. 드래프트도 같은 형태라 유리병 렌더 컴포넌트를 그대로 재사용 가능(단 `id`·`recordDate`는 optional 처리)
 5. **드래그 뮤테이션 직렬화**: 담기/되돌리기는 한 번에 하나씩 보낸다. 낙관적 업데이트 시엔 각 API 응답(전체 드래프트 스냅샷)으로 최종 보정하되, 병렬 전송으로 응답 순서가 뒤바뀌지 않도록 큐로 직렬화할 것
-6. **완성 이미지 캡처**: 완성 화면의 유리병 영역을 `canvas.toDataURL("image/png")`로 내보내 `POST /jars`의 `image`에 그대로 넣는다. 해상도는 512~768px 권장(1MB 초과 시 `413 IMAGE_TOO_LARGE`). html2canvas류를 쓴다면 배경 투명 옵션 확인
-7. **이미지 렌더**: 서재/친구 탭 유리병은 `<img src={jar.imageUrl}>` 한 줄이면 됨 — same-origin이라 쿠키가 자동 전송되고, 1시간 캐시 + ETag 재검증이라 같은 병을 반복 조회해도 부담 없음. `imageUrl`은 로그인한 본인/친구만 열리므로 외부 공유 불가
-8. **종 아이콘 배지**: `GET /api/friend-requests`의 `total`로 빨간 점 표시. 실시간 푸시는 없으므로 **탭 전환/포커스 시 + 60초 간격 폴링** 정도를 권장. 수락·거절 후에는 응답 반영과 함께 목록·배지를 재조회할 것
+6. **유리병 완성**: 오늘 담은 드래프트를 확정할 때 바디 없이 `POST /api/jars`를 호출.
+7. **종 아이콘 배지**: `GET /api/friend-requests`의 `total`로 빨간 점 표시. 실시간 푸시는 없으므로 **탭 전환/포커스 시 + 60초 간격 폴링** 정도를 권장. 수락·거절 후에는 응답 반영과 함께 목록·배지를 재조회할 것
