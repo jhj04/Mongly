@@ -106,6 +106,8 @@ export default function Shelf({
               key={item.id}
               label={item.label}
               image={item.image}
+              emotions={item.emotions}
+              seedKey={item.id}
               dimmed={item.dimmed}
               selected={item.id === selectedId}
               onSelect={() => onSelectId(item.id === selectedId ? null : item.id)}

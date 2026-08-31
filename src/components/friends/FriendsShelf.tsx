@@ -47,13 +47,11 @@ export default function FriendsShelf() {
       />
 
       <div className="flex items-center justify-between gap-3 sm:justify-center sm:gap-128 px-6 pb-20 mt-auto">
-        <Button
-          label="삭제하기"
-          variant="outlined"
-          size="lg"
-          disabled={!selected}
-          onClick={() => console.log("삭제하기")}
-        />
+        {/* 친구 탭엔 삭제하기가 없지만, 캐릭터 보기 버튼 위치를 서재 탭과 동일하게 유지하려고
+            같은 폭의 투명 placeholder로 자리만 채움(렌더는 되지만 안 보이고 클릭 불가) */}
+        <div className="invisible" aria-hidden>
+          <Button label="삭제하기" variant="outlined" size="lg" />
+        </div>
         <Button
           label="캐릭터 보기"
           variant="filled"

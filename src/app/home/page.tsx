@@ -10,8 +10,9 @@ import { useJarPhysics } from "@/hooks/useJarPhysics";
 import { useTodayJar, useAddDraftEmotion, useRemoveDraftEmotion } from "@/hooks/useJars";
 import { findEmotionByEmotionId, type Emotion } from "@/lib/emotions";
 import { useSnackbar } from "@/components/common/SnackbarProvider";
-import { captureNodeAsPng } from "@/lib/captureImage";
-import { setPendingJarImage } from "@/hooks/useLocalJars";
+// import { captureNodeAsPng } from "@/lib/captureImage";
+// import { setPendingJarImage } from "@/hooks/useLocalJars";
+import { useSound } from "@/hooks/useSound";
 
 export default function Home() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function Home() {
   const interiorRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
   const { showSnackbar } = useSnackbar();
+  const playFillSound = useSound("/audios/상승음2.mp3", { volume: 1 });
 
   const { jar: completedJar, draft, isLoading: isLoadingToday } = useTodayJar();
   const { addDraftEmotion } = useAddDraftEmotion();
@@ -64,6 +66,8 @@ export default function Home() {
   };
 
   const handleDropComplete = () => {
+    // 구슬이 병 안에 안착하는 순간 효과음 재생
+    playFillSound();
     if (pendingBead) dropBead(pendingBead.emotion, pendingBead.id);
     clearPending();
   };
@@ -79,18 +83,18 @@ export default function Home() {
 
   // 여기서는 서재에 확정 저장하지 않음 — 결과 페이지에서 "저장하기"를 눌러야 저장됨.
   // 감정은 담는 즉시(handleAddEmotion) 서버 드래프트에 저장돼 있어서 그냥 넘어가기만 하면 됨.
-  // 유리병+구슬 PNG는 (아직 서버가 이미지를 안 받아주니) 여기서 미리 캡처해뒀다가
-  // 결과 페이지의 "저장하기"에서 로컬에 확정 저장함.
+  // 유리병+구슬 PNG 캡처는 잠시 꺼둠 — 서재/친구 탭이 StaticJar로 감정 기반 정적 렌더링을
+  // 쓰게 되면서 캡처한 PNG를 쓰는 곳이 없어짐(1MB 제한에 걸려 413만 유발). 필요해지면 복원.
   const handleComplete = async () => {
     if (count === 0) return;
-    if (captureRef.current) {
-      try {
-        const image = await captureNodeAsPng(captureRef.current);
-        setPendingJarImage(image);
-      } catch (e) {
-        console.error("jar capture failed", e);
-      }
-    }
+    // if (captureRef.current) {
+    //   try {
+    //     const image = await captureNodeAsPng(captureRef.current);
+    //     setPendingJarImage(image);
+    //   } catch (e) {
+    //     console.error("jar capture failed", e);
+    //   }
+    // }
     router.push("/home/result");
   };
 

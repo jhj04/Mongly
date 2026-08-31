@@ -28,17 +28,18 @@ export default function AccountSection() {
     isSavingPassword,
     handleChangePassword,
 
-    isDeleting,
-    setIsDeleting,
-    deletePassword,
-    setDeletePassword,
-    deleteMessage,
-    isDeletingAccount,
-    cancelDelete,
-    handleConfirmDelete,
-
     isLoggingOut,
     handleLogout,
+
+    // 계정 삭제는 설정 페이지 하단(위험 구역)으로 이동 — 아래는 되돌릴 수 있게 남겨둠
+    // isDeleting,
+    // setIsDeleting,
+    // deletePassword,
+    // setDeletePassword,
+    // deleteMessage,
+    // isDeletingAccount,
+    // cancelDelete,
+    // handleConfirmDelete,
   } = useAccountSettings();
 
   return (
@@ -122,44 +123,15 @@ export default function AccountSection() {
         )}
       </div>
 
-      {!isDeleting ? (
-        <div className="flex gap-3 mt-2">
-          <Button
-            label="계정 삭제하기"
-            variant="danger"
-            className="flex-1"
-            onClick={() => setIsDeleting(true)}
-          />
-          <Button
-            label="로그아웃"
-            variant="outlined"
-            className="flex-1"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2 mt-2">
-          <TextField
-            label="비밀번호 확인"
-            type="password"
-            value={deletePassword}
-            onChange={setDeletePassword}
-            helperText={deleteMessage || "계정을 삭제하면 유리병과 친구 관계가 모두 사라져요."}
-            error={!!deleteMessage}
-          />
-          <div className="flex gap-3">
-            <Button label="취소" variant="outlined" className="flex-1" onClick={cancelDelete} />
-            <Button
-              label="삭제 확인"
-              variant="danger"
-              className="flex-1"
-              onClick={handleConfirmDelete}
-              disabled={isDeletingAccount}
-            />
-          </div>
-        </div>
-      )}
+      {/* 로그아웃 — 원래 자리(계정 섹션 하단). 계정 삭제는 페이지 하단 위험 구역으로 분리됨 */}
+      <div className="flex justify-end mt-2">
+        <Button
+          label="로그아웃"
+          variant="outlined"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        />
+      </div>
     </section>
   );
 }
