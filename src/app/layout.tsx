@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${pretendard.variable} ${parkDahyeon.variable} h-full antialiased`}
+      className={`${pretendard.variable} ${parkDahyeon.variable} h-full overflow-hidden antialiased`}
     >
       <AppShell>{children}</AppShell>
     </html>
