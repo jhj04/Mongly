@@ -76,9 +76,9 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="flex flex-1 flex-col items-end justify-center pl-6 pr-[16%]">
+    <main className="flex flex-1 flex-col items-center justify-center px-6 sm:items-end sm:pl-6 sm:pr-[16%]">
       <div
-        className="w-full max-w-md flex flex-col items-center gap-20 px-8 py-10 rounded-[2rem]"
+        className="w-full max-w-md flex flex-col items-center gap-8 px-6 py-6 rounded-[2rem] sm:gap-20 sm:px-8 sm:py-10"
         style={{
           background: "rgba(255, 255, 255, 0.15)",
           backdropFilter: "blur(20px)",
@@ -86,7 +86,7 @@ export default function OnboardingPage() {
           border: "1px solid rgba(255, 255, 255, 0.3)",
         }}
       >
-        <h1 className="font-point text-5xl text-primary-800">
+        <h1 className="font-point text-4xl text-primary-800 sm:text-5xl">
           {mode === "login" ? "몽글리" : "회원가입"}
         </h1>
 
@@ -125,7 +125,7 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <div className="w-full flex flex-col items-center gap-6">
+        <div className="w-full flex flex-col items-center gap-3 sm:gap-6">
           {mode === "login" ? (
             <>
               <Button

@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import type { Emotion } from "@/lib/emotions";
 
 interface MongleCharacterProps {
@@ -28,6 +29,41 @@ export default function MongleCharacter({
   ballEmotion,
   onDropComplete,
 }: MongleCharacterProps) {
+  const ballControls = useAnimationControls();
+
+  // 구슬을 놓는 완료 판정을 onAnimationComplete 콜백(브라우저 환경에 따라 씹히는 경우가
+  // 있음) 대신, controls.start()가 반환하는 Promise가 실제로 resolve되는 시점으로 판정.
+  // 캐릭터가 떠오르는 시간(RISE_DURATION)만큼 setTimeout으로 기다렸다가 구슬 낙하
+  // 시퀀스를 시작하는데, setTimeout은 애니메이션 프레임 생명주기와 무관하게 브라우저
+  // 타이머 큐에서 관리되어 onAnimationComplete보다 훨씬 안정적으로 실행됨.
+  useEffect(() => {
+    if (!active || !ballEmotion) return;
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      await ballControls.start(
+        {
+          y: [0, 26, 30, 28],
+          scaleX: [1, 1, 1.3, 1],
+          scaleY: [1, 1, 0.65, 0.9],
+          opacity: [1, 1, 1, 0],
+        },
+        { duration: DROP_DURATION, times: [0, 0.7, 0.85, 1], ease: "easeIn" }
+      );
+      if (cancelled) return;
+      onDropComplete();
+    }, RISE_DURATION * 1000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // onDropComplete는 매 렌더 새 함수라 굳이 의존성에 넣지 않음 — active/ballEmotion으로
+    // 시퀀스 시작 시점만 제어하고, 최신 콜백은 클로저로 매 실행마다 새로 캡처됨.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, ballEmotion, ballControls]);
+
   return (
     <AnimatePresence>
       {active && ballEmotion && (
@@ -40,8 +76,6 @@ export default function MongleCharacter({
             y: ["210%", "-50%"],
             opacity: [0, 1],
             scale: [0.6, 1],
-            // 원래는 여기서 "0%"까지 한 번 더 내려와 병 옆에 안착했는데,
-            // 내려오지 않고 떠오른 상태 그대로 있도록 그 구간은 뺐음
           }}
           exit={{
             x: "-220%",
@@ -71,19 +105,7 @@ export default function MongleCharacter({
               className="absolute h-12 w-12"
               style={{ left: "62%", top: "50%" }}
               initial={{ y: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
-              animate={{
-                y: [0, 26, 30, 28],
-                scaleX: [1, 1, 1.3, 1],
-                scaleY: [1, 1, 0.65, 0.9],
-                opacity: [1, 1, 1, 0],
-              }}
-              transition={{
-                duration: DROP_DURATION,
-                delay: RISE_DURATION,
-                times: [0, 0.7, 0.85, 1],
-                ease: "easeIn",
-              }}
-              onAnimationComplete={onDropComplete}
+              animate={ballControls}
             >
               <Image
                 src={ballEmotion.image}

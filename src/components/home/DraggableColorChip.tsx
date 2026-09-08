@@ -67,7 +67,7 @@ export default function DraggableColorChip({
       className={`relative w-10 h-10 flex-shrink-0 ${
         disabled ? "cursor-not-allowed opacity-40" : "cursor-grab active:cursor-grabbing"
       } ${className}`}
-      style={{ touchAction: "none" }}
+      style={{ touchAction: "pan-x" }}
     >
       <Image src={emotion.image} alt={emotion.label} fill sizes="40px" className="pointer-events-none select-none drop-shadow" />
       <BeadTooltipPortal pos={pos} label={emotion.label} />
