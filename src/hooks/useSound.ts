@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
+// src별로 Audio 인스턴스를 재사용하기 위한 모듈 레벨 캐시.
+// 이게 없으면 dev 모드의 React StrictMode가 마운트 시 effect를 두 번 실행할 때
+// 같은 오디오 파일에 대해 거의 동시에 두 번 네트워크 요청이 나가면서
+// 브라우저 캐시 쓰기 레이스로 net::ERR_CACHE_OPERATION_NOT_SUPPORTED가 발생함.
+const audioCache = new Map<string, HTMLAudioElement>();
+
 // 짧은 효과음/연출음을 재생하기 위한 훅.
 // public 폴더의 오디오 경로를 받아 Audio 인스턴스를 하나 만들어두고,
 // 반환된 play()를 호출하면 처음부터 다시 재생함.
@@ -8,12 +14,17 @@ export function useSound(src: string, { volume = 1 }: { volume?: number } = {}) 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const audio = new Audio(encodeURI(src));
-    audio.preload = "auto";
+    const encodedSrc = encodeURI(src);
+    let audio = audioCache.get(encodedSrc);
+    if (!audio) {
+      audio = new Audio(encodedSrc);
+      audio.preload = "auto";
+      audioCache.set(encodedSrc, audio);
+    }
     audio.volume = volume;
     audioRef.current = audio;
     return () => {
-      audio.pause();
+      audio!.pause();
       audioRef.current = null;
     };
   }, [src, volume]);
