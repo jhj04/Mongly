@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-// 7일 만료 단일 토큰 (액세스/리프레시 이중 토큰은 과설계로 배제 — 계획서 §7)
+// 7일 만료 단일 토큰 (액세스/리프레시 이중 토큰은 과설계로 배제)
 const EXPIRES_IN = "7d";
 
 function secret(): string {

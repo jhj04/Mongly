@@ -356,10 +356,19 @@ export const openapi = {
       },
     },
 
+    "/api/health/live": {
+      get: {
+        tags: ["기타"],
+        summary:
+          "슬립 방지 핑 — DB를 건드리지 않음. UptimeRobot 5분 간격 모니터는 반드시 이 경로로 (Render만 깨우고 Neon은 재워 무료 컴퓨트 한도를 아낀다)",
+        responses: { "200": ok("서버 살아 있음", { ok: true }) },
+      },
+    },
     "/api/health": {
       get: {
         tags: ["기타"],
-        summary: "헬스체크 — DB SELECT 1 포함 (배포 모니터링용)",
+        summary:
+          "심층 헬스체크 — DB SELECT 1 포함. 배포 직후 확인·수동 워밍업용이며, 모니터링에 걸 경우 60분 이상 간격으로만 (잦은 호출은 Neon을 24/7 깨워 무료 한도를 소진시킴)",
         responses: { "200": ok("정상", { ok: true, db: "up" }) },
       },
     },
