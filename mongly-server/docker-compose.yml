@@ -11,5 +11,18 @@ services:
     volumes:
       - mongly-db-data:/var/lib/postgresql/data
 
+  # Explicit opt-in, isolated from the development/production database.
+  db-test:
+    image: postgres:16-alpine
+    profiles: [test]
+    environment:
+      POSTGRES_USER: mongly
+      POSTGRES_PASSWORD: mongly
+      POSTGRES_DB: mongly_test
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
 volumes:
   mongly-db-data:

@@ -1,0 +1,3675 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mongly API",
+    "version": "0.6.0",
+    "description": "2026-09-24 계약. 선택 50 grapheme 일기(본인·현재 친구 공개), KST 오늘 병 편집, 무제한 보관/페이지 조회, 친구 좋아요, FRIEND_REQUEST/JAR_LIKED 통합 알림. 오류는 {error:{code,message,details?}}. httpOnly mongly_token 쿠키 인증. 같은 출처 /api/*로 호출. 상태 변경 본문은 application/json. 기록당 구슬 1~7개·KST 날짜당 병 1개·친구 10명은 유지. 최신 상세 및 변경 안내는 docs/API.md, docs/API_CHANGES_2026-09-24.md."
+  },
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "인증",
+      "description": "이메일 가입·로그인·쿠키 세션"
+    },
+    {
+      "name": "계정",
+      "description": "닉네임·비밀번호·탈퇴"
+    },
+    {
+      "name": "유리병",
+      "description": "드래프트·완성·KST 오늘 편집·보관함"
+    },
+    {
+      "name": "좋아요",
+      "description": "친구 병 반응: 멱등 PUT/DELETE, 최초 좋아요만 알림"
+    },
+    {
+      "name": "친구",
+      "description": "요청·수락·거절·관계 해제·친구별 최신 병"
+    },
+    {
+      "name": "알림",
+      "description": "실제 Notification 행을 통한 통합 목록·개별 읽음·배지. 친구 요청 읽음은 수락이 아님"
+    },
+    {
+      "name": "기타",
+      "description": "헬스체크"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "mongly_token",
+        "description": "로그인/가입으로 발급되는 httpOnly 쿠키"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Ok": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "SessionUser": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "email",
+          "loginId"
+        ]
+      },
+      "LoginIdResponse": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "loginId"
+        ]
+      },
+      "AvailableResponse": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ]
+      },
+      "SignupInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "UTF-8 72바이트 이하"
+          },
+          "termsAgreed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "loginId",
+          "password",
+          "termsAgreed"
+        ]
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginIdInput": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "loginId"
+        ]
+      },
+      "PasswordInput": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "description": "UTF-8 72바이트 이하"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "DeleteAccountInput": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "Note": {
+        "type": "string",
+        "nullable": true,
+        "x-grapheme-max-length": 50,
+        "x-utf8-max-bytes": 2048,
+        "description": "선택 한 줄 일반 텍스트. 제어문자/개행을 trim 전에 거부, NFC 정규화 후 trim, 빈 값은 null. 최대 50 grapheme(중간 공백 포함), 정규화 전후 UTF-8 2048바이트 이하. 문자열 maxLength와 다른 기준. 본인과 현재 친구에게 공개하며 공개 설정 없음.",
+        "example": "오늘은 생각보다 잘 해냈다."
+      },
+      "Emotion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "colorHex": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "colorHex",
+          "sortOrder"
+        ]
+      },
+      "EmotionList": {
+        "type": "object",
+        "properties": {
+          "emotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Emotion"
+            }
+          }
+        },
+        "required": [
+          "emotions"
+        ]
+      },
+      "JarEmotion": {
+        "type": "object",
+        "properties": {
+          "emotionId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "colorHex": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          }
+        },
+        "required": [
+          "emotionId",
+          "name",
+          "colorHex",
+          "count"
+        ]
+      },
+      "Jar": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "recordDate": {
+            "type": "string",
+            "format": "date",
+            "description": "서버 KST 날짜 YYYY-MM-DD"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "실제 note/감정 변경마다 증가. 좋아요/읽음/no-op으로 변하지 않음"
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "조회 시 본인이면서 KST 오늘 기록. 저장 시 날짜·권한 재검사"
+          },
+          "canLike": {
+            "type": "boolean",
+            "description": "현재 친구의 병이면 true, 본인 병은 false"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "dominantEmotionId": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true,
+            "description": "최다 감정. 동률이면 null"
+          },
+          "emotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JarEmotion"
+            },
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "emotionId 고유, count 합계 1~7"
+          }
+        },
+        "required": [
+          "id",
+          "recordDate",
+          "note",
+          "createdAt",
+          "updatedAt",
+          "version",
+          "canEdit",
+          "canLike",
+          "likeCount",
+          "likedByMe",
+          "dominantEmotionId",
+          "emotions"
+        ],
+        "description": "본인/친구 목록·상세·완료·수정 공통 응답. viewer에 따라 권한·likedByMe만 달라진다."
+      },
+      "Draft": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "dominantEmotionId": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "emotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JarEmotion"
+            },
+            "maxItems": 7
+          }
+        },
+        "required": [
+          "total",
+          "dominantEmotionId",
+          "emotions"
+        ]
+      },
+      "TodayState": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "jar": {
+                "type": "object",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              },
+              "draft": {
+                "$ref": "#/components/schemas/Draft"
+              }
+            },
+            "required": [
+              "jar",
+              "draft"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "jar": {
+                "$ref": "#/components/schemas/Jar"
+              },
+              "draft": {
+                "type": "object",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              }
+            },
+            "required": [
+              "jar",
+              "draft"
+            ]
+          }
+        ],
+        "description": "완료 전 jar=null/draft=Draft, 완료 후 jar=Jar/draft=null"
+      },
+      "DraftEmotionInput": {
+        "type": "object",
+        "properties": {
+          "emotionId": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "emotionId"
+        ]
+      },
+      "CompleteJarInput": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          }
+        },
+        "additionalProperties": false,
+        "description": "본문 생략과 {}도 허용. 감정은 서버 드래프트 사용"
+      },
+      "EditEmotionInput": {
+        "type": "object",
+        "properties": {
+          "emotionId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          }
+        },
+        "required": [
+          "emotionId",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "EditJarInput": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "note": {
+            "$ref": "#/components/schemas/Note"
+          },
+          "emotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EditEmotionInput"
+            },
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "전체 대체. emotionId 고유, count 합계 1~7. 기존 비활성 감정은 기존 count 이하만 허용"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "note"
+            ]
+          },
+          {
+            "required": [
+              "emotions"
+            ]
+          }
+        ],
+        "description": "note 또는 emotions 하나 이상 필수. note 생략=유지, null=지우기. 버전 일치 확인 후 내용이 같으면 no-op"
+      },
+      "JarPage": {
+        "type": "object",
+        "properties": {
+          "jars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Jar"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "다음 페이지가 없으면 null. 재사용 시 URL 인코딩하고 내용을 해석하지 않는다."
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "jars",
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "LikeState": {
+        "type": "object",
+        "properties": {
+          "jarId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "likedByMe": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "jarId",
+          "likeCount",
+          "likedByMe"
+        ]
+      },
+      "FriendRequestInput": {
+        "type": "object",
+        "properties": {
+          "toLoginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "toLoginId"
+        ]
+      },
+      "FriendRequestResult": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted"
+            ]
+          }
+        },
+        "required": [
+          "loginId",
+          "status"
+        ]
+      },
+      "ReceivedFriendRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "fromLoginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          }
+        },
+        "required": [
+          "id",
+          "fromLoginId",
+          "createdAt"
+        ]
+      },
+      "ReceivedFriendRequests": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivedFriendRequest"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "requests"
+        ]
+      },
+      "Friend": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          }
+        },
+        "required": [
+          "loginId",
+          "createdAt"
+        ]
+      },
+      "FriendList": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "friends": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Friend"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "total",
+          "friends"
+        ]
+      },
+      "RemoveFriendsInput": {
+        "type": "object",
+        "properties": {
+          "friendLoginIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+              "minLength": 2,
+              "maxLength": 16
+            },
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "friendLoginIds"
+        ]
+      },
+      "RemovedFriends": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      },
+      "FriendJar": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "jar": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "불투명 ID"
+              },
+              "recordDate": {
+                "type": "string",
+                "format": "date",
+                "description": "서버 KST 날짜 YYYY-MM-DD"
+              },
+              "note": {
+                "$ref": "#/components/schemas/Note"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "실제 note/감정 변경마다 증가. 좋아요/읽음/no-op으로 변하지 않음"
+              },
+              "canEdit": {
+                "type": "boolean",
+                "description": "조회 시 본인이면서 KST 오늘 기록. 저장 시 날짜·권한 재검사"
+              },
+              "canLike": {
+                "type": "boolean",
+                "description": "현재 친구의 병이면 true, 본인 병은 false"
+              },
+              "likeCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "likedByMe": {
+                "type": "boolean"
+              },
+              "dominantEmotionId": {
+                "type": "integer",
+                "minimum": 1,
+                "nullable": true,
+                "description": "최다 감정. 동률이면 null"
+              },
+              "emotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JarEmotion"
+                },
+                "minItems": 1,
+                "maxItems": 7,
+                "description": "emotionId 고유, count 합계 1~7"
+              }
+            },
+            "required": [
+              "id",
+              "recordDate",
+              "note",
+              "createdAt",
+              "updatedAt",
+              "version",
+              "canEdit",
+              "canLike",
+              "likeCount",
+              "likedByMe",
+              "dominantEmotionId",
+              "emotions"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "loginId",
+          "jar"
+        ]
+      },
+      "FriendJars": {
+        "type": "object",
+        "properties": {
+          "friends": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FriendJar"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "friends"
+        ]
+      },
+      "JarLikedNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "actor": {
+            "type": "object",
+            "properties": {
+              "loginId": {
+                "type": "string",
+                "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+                "minLength": 2,
+                "maxLength": 16
+              }
+            },
+            "required": [
+              "loginId"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "미읽음은 null. 최초 읽음 시각을 계속 유지",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "JAR_LIKED"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "JAR"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "불투명 ID"
+              },
+              "recordDate": {
+                "type": "string",
+                "format": "date",
+                "description": "서버 KST 날짜 YYYY-MM-DD"
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "recordDate"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "actor",
+          "createdAt",
+          "readAt",
+          "type",
+          "target"
+        ]
+      },
+      "FriendRequestNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "actor": {
+            "type": "object",
+            "properties": {
+              "loginId": {
+                "type": "string",
+                "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+                "minLength": 2,
+                "maxLength": 16
+              }
+            },
+            "required": [
+              "loginId"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "미읽음은 null. 최초 읽음 시각을 계속 유지",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FRIEND_REQUEST"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FRIEND_REQUEST"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "불투명 ID"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "actor",
+          "createdAt",
+          "readAt",
+          "type",
+          "target"
+        ]
+      },
+      "Notification": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/JarLikedNotification"
+          },
+          {
+            "$ref": "#/components/schemas/FriendRequestNotification"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "JAR_LIKED": "#/components/schemas/JarLikedNotification",
+            "FRIEND_REQUEST": "#/components/schemas/FriendRequestNotification"
+          }
+        }
+      },
+      "NotificationPage": {
+        "type": "object",
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "다음 페이지가 없으면 null. 재사용 시 URL 인코딩하고 내용을 해석하지 않는다."
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notifications",
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "ReadNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601"
+          }
+        },
+        "required": [
+          "id",
+          "readAt"
+        ]
+      },
+      "NotificationSummary": {
+        "type": "object",
+        "properties": {
+          "unreadLikeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "readAt=null인 JAR_LIKED 알림 수"
+          },
+          "pendingFriendRequestCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "읽음 여부와 관계없는 미처리 받은 친구 요청 수"
+          },
+          "badgeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "unreadLikeCount + pendingFriendRequestCount"
+          }
+        },
+        "required": [
+          "unreadLikeCount",
+          "pendingFriendRequestCount",
+          "badgeCount"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "db": {
+            "type": "string",
+            "enum": [
+              "up"
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "db"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "tags": [
+          "인증"
+        ],
+        "security": [],
+        "summary": "회원가입·자동 로그인",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupInput"
+              },
+              "example": {
+                "email": "demo@mongly.app",
+                "loginId": "데모몽글리",
+                "password": "demo12345",
+                "termsAgreed": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "가입 완료 + 쿠키 발급",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUser"
+                },
+                "example": {
+                  "email": "demo@mongly.app",
+                  "loginId": "데모몽글리"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EMAIL_TAKEN / LOGIN_ID_TAKEN / SIGNUP_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "EMAIL_TAKEN",
+                    "message": "이미 가입된 이메일이에요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "인증"
+        ],
+        "security": [],
+        "summary": "이메일 로그인 (IP당 분당 10회)",
+        "description": "이메일 trim·소문자 정규화. 계정 존재 여부를 노출하지 않는다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              },
+              "example": {
+                "email": "demo@mongly.app",
+                "password": "demo12345"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "로그인 + 쿠키 발급",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUser"
+                },
+                "example": {
+                  "email": "demo@mongly.app",
+                  "loginId": "데모몽글리"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "자격증명 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_CREDENTIALS",
+                    "message": "이메일 또는 비밀번호가 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "인증"
+        ],
+        "security": [],
+        "summary": "로그아웃",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 만료 세션에서도 성공.",
+        "responses": {
+          "200": {
+            "description": "쿠키 삭제",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "인증"
+        ],
+        "summary": "현재 로그인 사용자",
+        "responses": {
+          "200": {
+            "description": "세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUser"
+                },
+                "example": {
+                  "email": "demo@mongly.app",
+                  "loginId": "데모몽글리"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/check-login-id": {
+      "get": {
+        "tags": [
+          "계정"
+        ],
+        "security": [],
+        "summary": "닉네임 사용 가능 여부 (IP당 분당 30회)",
+        "parameters": [
+          {
+            "name": "loginId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[가-힣a-zA-Z0-9]{2,16}$",
+              "minLength": 2,
+              "maxLength": 16
+            },
+            "example": "데모몽글리"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "확인 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailableResponse"
+                },
+                "example": {
+                  "available": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/login-id": {
+      "patch": {
+        "tags": [
+          "계정"
+        ],
+        "summary": "닉네임 변경",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIdInput"
+              },
+              "example": {
+                "loginId": "새몽글리"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "변경 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginIdResponse"
+                },
+                "example": {
+                  "loginId": "새몽글리"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "닉네임 중복",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "LOGIN_ID_TAKEN",
+                    "message": "이미 사용 중인 닉네임이에요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/password": {
+      "patch": {
+        "tags": [
+          "계정"
+        ],
+        "summary": "현재 비밀번호로 비밀번호 변경",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordInput"
+              },
+              "example": {
+                "currentPassword": "demo12345",
+                "newPassword": "newpass123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "변경 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / WRONG_PASSWORD. WRONG_PASSWORD는 로그아웃 사유가 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "WRONG_PASSWORD",
+                    "message": "비밀번호가 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "delete": {
+        "tags": [
+          "계정"
+        ],
+        "summary": "계정 삭제",
+        "description": "병·요청·관계·좋아요·알림 정리 및 쿠키 삭제.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountInput"
+              },
+              "example": {
+                "password": "demo12345"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "탈퇴 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / WRONG_PASSWORD",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "WRONG_PASSWORD",
+                    "message": "비밀번호가 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/emotions": {
+      "get": {
+        "tags": [
+          "유리병"
+        ],
+        "security": [],
+        "summary": "활성 감정 팔레트",
+        "responses": {
+          "200": {
+            "description": "렌더링 원천 감정 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmotionList"
+                },
+                "example": {
+                  "emotions": [
+                    {
+                      "id": 1,
+                      "name": "기쁨",
+                      "colorHex": "#FFD54A",
+                      "sortOrder": 1
+                    },
+                    {
+                      "id": 2,
+                      "name": "슬픔",
+                      "colorHex": "#4966B6",
+                      "sortOrder": 2
+                    },
+                    {
+                      "id": 3,
+                      "name": "분노",
+                      "colorHex": "#F05B5B",
+                      "sortOrder": 3
+                    },
+                    {
+                      "id": 4,
+                      "name": "놀람",
+                      "colorHex": "#7ED9F8",
+                      "sortOrder": 4
+                    },
+                    {
+                      "id": 5,
+                      "name": "불안",
+                      "colorHex": "#9B7AE5",
+                      "sortOrder": 5
+                    },
+                    {
+                      "id": 6,
+                      "name": "사랑",
+                      "colorHex": "#FF78AE",
+                      "sortOrder": 6
+                    },
+                    {
+                      "id": 7,
+                      "name": "짜증",
+                      "colorHex": "#FF9D4D",
+                      "sortOrder": 7
+                    },
+                    {
+                      "id": 8,
+                      "name": "설렘",
+                      "colorHex": "#FFD5E8",
+                      "sortOrder": 8
+                    },
+                    {
+                      "id": 9,
+                      "name": "후회",
+                      "colorHex": "#A9B0B8",
+                      "sortOrder": 9
+                    },
+                    {
+                      "id": 10,
+                      "name": "희망",
+                      "colorHex": "#B7E66B",
+                      "sortOrder": 10
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jars/today": {
+      "get": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "서버 KST 오늘 상태",
+        "responses": {
+          "200": {
+            "description": "완료 전 Draft 또는 완료 후 Jar. jar/draft 중 정확히 하나가 null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayState"
+                },
+                "examples": {
+                  "empty": {
+                    "value": {
+                      "jar": null,
+                      "draft": {
+                        "total": 0,
+                        "dominantEmotionId": null,
+                        "emotions": []
+                      }
+                    }
+                  },
+                  "draft": {
+                    "value": {
+                      "jar": null,
+                      "draft": {
+                        "total": 2,
+                        "dominantEmotionId": 1,
+                        "emotions": [
+                          {
+                            "emotionId": 1,
+                            "name": "기쁨",
+                            "colorHex": "#FFD54A",
+                            "count": 2
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "completed": {
+                    "value": {
+                      "jar": {
+                        "id": "cmjar0001",
+                        "recordDate": "2026-09-24",
+                        "note": "발표를 무사히 마쳐서 후련했다.",
+                        "createdAt": "2026-09-24T10:00:00.000Z",
+                        "updatedAt": "2026-09-24T10:00:00.000Z",
+                        "version": 1,
+                        "canEdit": true,
+                        "canLike": false,
+                        "likeCount": 0,
+                        "likedByMe": false,
+                        "dominantEmotionId": 1,
+                        "emotions": [
+                          {
+                            "emotionId": 1,
+                            "name": "기쁨",
+                            "colorHex": "#FFD54A",
+                            "count": 2
+                          },
+                          {
+                            "emotionId": 6,
+                            "name": "사랑",
+                            "colorHex": "#FF78AE",
+                            "count": 1
+                          }
+                        ]
+                      },
+                      "draft": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jars/draft/emotions": {
+      "post": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "감정 구슬 1개 즉시 저장",
+        "description": "프런트는 담기·되돌리기 요청을 직렬화한다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftEmotionInput"
+              },
+              "example": {
+                "emotionId": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "갱신된 전체 드래프트",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                },
+                "example": {
+                  "total": 2,
+                  "dominantEmotionId": 1,
+                  "emotions": [
+                    {
+                      "emotionId": 1,
+                      "name": "기쁨",
+                      "colorHex": "#FFD54A",
+                      "count": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / INVALID_EMOTION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_EMOTION",
+                    "message": "존재하지 않는 감정이에요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DRAFT_FULL / JAR_ALREADY_TODAY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "DRAFT_FULL",
+                    "message": "감정은 최대 7개까지 담을 수 있어요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "마지막 구슬 1개 되돌리기",
+        "description": "요청 본문 없음. Content-Type도 생략 가능.",
+        "responses": {
+          "200": {
+            "description": "갱신된 전체 드래프트",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                },
+                "example": {
+                  "total": 0,
+                  "dominantEmotionId": null,
+                  "emotions": []
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "되돌릴 구슬 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "DRAFT_EMPTY",
+                    "message": "되돌릴 감정이 없어요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jars": {
+      "post": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "드래프트와 선택 일기로 오늘 병 완성",
+        "description": "본문 생략/{} /note:null 허용. 감정은 서버 드래프트에서 읽는다. 기존 병은 개수와 무관하게 보존. 응답 유실 시 GET /jars/today로 확인하며 재호출은 기존 내용을 덮어쓰지 않는다.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteJarInput"
+              },
+              "example": {
+                "note": "발표를 무사히 마쳐서 후련했다."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "병·일기 저장, 드래프트 정리",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Jar"
+                },
+                "example": {
+                  "id": "cmjar0001",
+                  "recordDate": "2026-09-24",
+                  "note": "발표를 무사히 마쳐서 후련했다.",
+                  "createdAt": "2026-09-24T10:00:00.000Z",
+                  "updatedAt": "2026-09-24T10:00:00.000Z",
+                  "version": 1,
+                  "canEdit": true,
+                  "canLike": false,
+                  "likeCount": 0,
+                  "likedByMe": false,
+                  "dominantEmotionId": 1,
+                  "emotions": [
+                    {
+                      "emotionId": 1,
+                      "name": "기쁨",
+                      "colorHex": "#FFD54A",
+                      "count": 2
+                    },
+                    {
+                      "emotionId": 6,
+                      "name": "사랑",
+                      "colorHex": "#FF78AE",
+                      "count": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / DRAFT_EMPTY. 검증 실패 시 드래프트 보존",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "DRAFT_EMPTY",
+                    "message": "담은 감정이 없어요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "JAR_ALREADY_TODAY / 비정상 드래프트의 DRAFT_FULL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_ALREADY_TODAY",
+                    "message": "오늘의 유리병은 이미 완성했어요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "내 보관함 페이지 (저장 총량 무제한)",
+        "description": "recordDate 내림차순. 기본 limit=7, 최대50. total은 제공하지 않는다. nextCursor=null이면 마지막. 커서 병이 삭제되어도 날짜 경계로 이동 가능. 최신 기록은 첫 페이지 재조회.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 7
+            },
+            "description": "정수 1~50. 저장 총량 한도가 아님"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "응답 nextCursor를 그대로 재전송. 버전·recordDate를 인코딩한 불투명 문자열"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "내 병 페이지",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JarPage"
+                },
+                "example": {
+                  "jars": [
+                    {
+                      "id": "cmjar0001",
+                      "recordDate": "2026-09-24",
+                      "note": "발표를 무사히 마쳐서 후련했다.",
+                      "createdAt": "2026-09-24T10:00:00.000Z",
+                      "updatedAt": "2026-09-24T10:00:00.000Z",
+                      "version": 1,
+                      "canEdit": true,
+                      "canLike": false,
+                      "likeCount": 0,
+                      "likedByMe": false,
+                      "dominantEmotionId": 1,
+                      "emotions": [
+                        {
+                          "emotionId": 1,
+                          "name": "기쁨",
+                          "colorHex": "#FFD54A",
+                          "count": 2
+                        },
+                        {
+                          "emotionId": 6,
+                          "name": "사랑",
+                          "colorHex": "#FF78AE",
+                          "count": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "nextCursor": null,
+                  "hasMore": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jars/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "description": "병 ID",
+          "example": "cmjar0001"
+        }
+      ],
+      "get": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "병 상세 (본인 또는 현재 친구)",
+        "description": "친구의 과거 병도 ID로 열람 가능. note를 포함한 공통 Jar.",
+        "responses": {
+          "200": {
+            "description": "병 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Jar"
+                },
+                "example": {
+                  "id": "cmjar0001",
+                  "recordDate": "2026-09-24",
+                  "note": "발표를 무사히 마쳐서 후련했다.",
+                  "createdAt": "2026-09-24T10:00:00.000Z",
+                  "updatedAt": "2026-09-24T10:00:00.000Z",
+                  "version": 1,
+                  "canEdit": true,
+                  "canLike": false,
+                  "likeCount": 0,
+                  "likedByMe": false,
+                  "dominantEmotionId": 1,
+                  "emotions": [
+                    {
+                      "emotionId": 1,
+                      "name": "기쁨",
+                      "colorHex": "#FFD54A",
+                      "count": 2
+                    },
+                    {
+                      "emotionId": 6,
+                      "name": "사랑",
+                      "colorHex": "#FF78AE",
+                      "count": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "본인·친구 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "친구의 유리병만 볼 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "병 없음·삭제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_NOT_FOUND",
+                    "message": "존재하지 않는 유리병이에요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "작성자의 KST 오늘 병 감정·일기 편집",
+        "description": "expectedVersion 필수, note/emotions 중 하나 이상. emotions는 전체 대체(고유 emotionId, count 합1~7). 잠금 후 서버 날짜·권한 재검사. 버전 불일치는 내용이 같아도409. 일치하고 정규화된 내용이 같으면 no-op으로 version/updatedAt 유지. 실제 수정 시 둘만 갱신하며 ID/recordDate/createdAt/좋아요/알림 보존. 기존 비활성 감정은 기존 수량 이하만 허용.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditJarInput"
+              },
+              "example": {
+                "expectedVersion": 1,
+                "note": "저녁에는 친구들과 함께 쉬었다.",
+                "emotions": [
+                  {
+                    "emotionId": 1,
+                    "count": 2
+                  },
+                  {
+                    "emotionId": 6,
+                    "count": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정본 또는 동일 내용 원본",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Jar"
+                },
+                "example": {
+                  "id": "cmjar0001",
+                  "recordDate": "2026-09-24",
+                  "note": "저녁에는 친구들과 함께 쉬었다.",
+                  "createdAt": "2026-09-24T10:00:00.000Z",
+                  "updatedAt": "2026-09-24T10:15:00.000Z",
+                  "version": 2,
+                  "canEdit": true,
+                  "canLike": false,
+                  "likeCount": 0,
+                  "likedByMe": false,
+                  "dominantEmotionId": 1,
+                  "emotions": [
+                    {
+                      "emotionId": 1,
+                      "name": "기쁨",
+                      "colorHex": "#FFD54A",
+                      "count": 2
+                    },
+                    {
+                      "emotionId": 6,
+                      "name": "사랑",
+                      "colorHex": "#FF78AE",
+                      "count": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / INVALID_EMOTION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "작성자 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "내 유리병만 수정할 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "병 없음·삭제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_NOT_FOUND",
+                    "message": "존재하지 않는 유리병이에요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "JAR_VERSION_CONFLICT(최신 상세 재조회) / JAR_EDIT_WINDOW_CLOSED(KST 자정 경과 포함)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "conflict": {
+                    "value": {
+                      "error": {
+                        "code": "JAR_VERSION_CONFLICT",
+                        "message": "다른 곳에서 기록이 수정됐어요. 최신 기록을 다시 확인해주세요.",
+                        "details": {
+                          "currentVersion": 2
+                        }
+                      }
+                    }
+                  },
+                  "closed": {
+                    "value": {
+                      "error": {
+                        "code": "JAR_EDIT_WINDOW_CLOSED",
+                        "message": "오늘의 유리병만 수정할 수 있어요."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "유리병"
+        ],
+        "summary": "본인 병 삭제",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 병의 좋아요·연결 알림도 삭제.",
+        "responses": {
+          "200": {
+            "description": "삭제 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "작성자 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "내 유리병만 삭제할 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "병 없음·삭제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_NOT_FOUND",
+                    "message": "존재하지 않는 유리병이에요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jars/{id}/like": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "description": "현재 친구의 병 ID (과거 병도 가능)",
+          "example": "cmjar0002"
+        }
+      ],
+      "put": {
+        "tags": [
+          "좋아요"
+        ],
+        "summary": "좋아요 설정 (멱등)",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 설정+취소 합산 사용자ID당 분당60회. 최초 사용자/병 상태 생성 때만 알림1개. 반복PUT은 중복 없음. 취소 후 재좋아요는 활성 수만 증가하고 알림 재생성 안 함. 친구 해제로 이력이 삭제된 뒤 재친구가 되면 새 첫 좋아요.",
+        "responses": {
+          "200": {
+            "description": "서버 확정 좋아요 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeState"
+                },
+                "example": {
+                  "jarId": "cmjar0002",
+                  "likeCount": 1,
+                  "likedByMe": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 ID의 VALIDATION / 본인 병의 SELF_LIKE_NOT_ALLOWED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "SELF_LIKE_NOT_ALLOWED",
+                    "message": "내 유리병에는 좋아요를 누를 수 없어요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "현재 친구 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "친구의 유리병에만 좋아요를 누를 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "병 없음·삭제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_NOT_FOUND",
+                    "message": "존재하지 않는 유리병이에요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "좋아요"
+        ],
+        "summary": "좋아요 취소 (멱등)",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 설정+취소 합산 사용자ID당 분당60회. 알림도 삭제. 최초 알림 이력은 유지하므로 재좋아요 알림 없음. 이미 취소/이력 없는 경우도200.",
+        "responses": {
+          "200": {
+            "description": "서버 확정 좋아요 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LikeState"
+                },
+                "example": {
+                  "jarId": "cmjar0002",
+                  "likeCount": 0,
+                  "likedByMe": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 ID의 VALIDATION / 본인 병의 SELF_LIKE_NOT_ALLOWED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "SELF_LIKE_NOT_ALLOWED",
+                    "message": "내 유리병에는 좋아요를 누를 수 없어요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "현재 친구 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "친구의 유리병에만 좋아요를 누를 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "병 없음·삭제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "JAR_NOT_FOUND",
+                    "message": "존재하지 않는 유리병이에요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/friend-requests": {
+      "post": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "친구 요청 보내기 (IP당 분당10회)",
+        "description": "pending 요청과 FRIEND_REQUEST 알림을 생성. 상대가 이미 요청했다면 맞요청 즉시 성립(status:accepted)하며 대기 요청·연결 알림 정리.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FriendRequestInput"
+              },
+              "example": {
+                "toLoginId": "데모친구"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "요청 또는 맞요청 성립",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequestResult"
+                },
+                "example": {
+                  "loginId": "데모친구",
+                  "status": "pending"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION / SELF_FRIEND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "SELF_FRIEND",
+                    "message": "자기 자신에게는 친구 요청을 보낼 수 없어요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "닉네임 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "USER_NOT_FOUND",
+                    "message": "존재하지 않는 아이디예요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_FRIEND / REQUEST_ALREADY_SENT / REQUEST_INBOX_FULL / FRIEND_LIMIT_ME / 맞요청의 FRIEND_LIMIT_TARGET",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "REQUEST_ALREADY_SENT",
+                    "message": "이미 친구 요청을 보냈어요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "받은 대기 요청 (기존 호환 API)",
+        "description": "total은 pending 요청 수만 의미. 통합 종 배지는 GET /notifications/summary의 badgeCount 사용.",
+        "responses": {
+          "200": {
+            "description": "대기 요청 최신순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedFriendRequests"
+                },
+                "example": {
+                  "total": 1,
+                  "requests": [
+                    {
+                      "id": "cmrequest0001",
+                      "fromLoginId": "데모친구",
+                      "createdAt": "2026-09-24T09:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/friend-requests/{id}/accept": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "description": "FriendRequest ID. 통합 알림의 target.id를 사용 (알림 id가 아님)",
+          "example": "cmrequest0001"
+        }
+      ],
+      "post": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "받은 친구 요청 수락",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 양방향 친구 성립 후 요청·연결 알림 삭제. 한도 오류 시 요청·알림 보존.",
+        "responses": {
+          "200": {
+            "description": "친구 성립",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginIdResponse"
+                },
+                "example": {
+                  "loginId": "데모친구"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "내가 받은 요청 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "내가 받은 요청만 처리할 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이미 처리·삭제된 요청",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "REQUEST_NOT_FOUND",
+                    "message": "이미 처리됐거나 없는 요청이에요."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "FRIEND_LIMIT_ME / FRIEND_LIMIT_TARGET / ALREADY_FRIEND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FRIEND_LIMIT_ME",
+                    "message": "내 친구가 가득 찼어요. (최대 10명)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/friend-requests/{id}/reject": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "불투명 ID"
+          },
+          "description": "FriendRequest ID. 통합 알림의 target.id",
+          "example": "cmrequest0001"
+        }
+      ],
+      "post": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "받은 친구 요청 거절",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 요청·연결 알림 삭제. 상대에게 거절 알림 없음.",
+        "responses": {
+          "200": {
+            "description": "거절 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "내가 받은 요청 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FORBIDDEN",
+                    "message": "내가 받은 요청만 처리할 수 있어요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이미 처리·삭제된 요청",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "REQUEST_NOT_FOUND",
+                    "message": "이미 처리됐거나 없는 요청이에요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/friends": {
+      "get": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "친구 목록 (최대10명)",
+        "description": "페이지네이션 없음. total은 친구 수.",
+        "responses": {
+          "200": {
+            "description": "친구 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendList"
+                },
+                "example": {
+                  "total": 1,
+                  "friends": [
+                    {
+                      "loginId": "데모친구",
+                      "createdAt": "2026-09-24T09:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "친구 다중 삭제와 양방향 반응 정리",
+        "description": "전체 성공/전체 실패. 쌍방 관계와 서로에게 남긴 좋아요 이력·연결 알림까지 실제 삭제. 해제 이후 상세/좋아요 권한 즉시 회수. 재친구 후 첫 좋아요는 새 알림 가능.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveFriendsInput"
+              },
+              "example": {
+                "friendLoginIds": [
+                  "데모친구"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "삭제 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedFriends"
+                },
+                "example": {
+                  "deleted": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "친구 아닌 닉네임 포함 — 전체 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "FRIEND_NOT_FOUND",
+                    "message": "친구 목록에 없는 아이디가 포함돼 있어요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/friends/jars": {
+      "get": {
+        "tags": [
+          "친구"
+        ],
+        "summary": "친구별 최신 병 1개 (IP당 분당30회)",
+        "description": "recordDate로 최신 판단. note/좋아요/권한 포함 공통Jar. 기록 없으면 jar:null. 과거 목록 API는 없지만 ID로 과거 상세 접근은 허용.",
+        "responses": {
+          "200": {
+            "description": "친구 최신 병",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendJars"
+                },
+                "example": {
+                  "friends": [
+                    {
+                      "loginId": "데모친구",
+                      "jar": {
+                        "id": "cmjar0002",
+                        "recordDate": "2026-09-24",
+                        "note": null,
+                        "createdAt": "2026-09-24T10:00:00.000Z",
+                        "updatedAt": "2026-09-24T10:00:00.000Z",
+                        "version": 1,
+                        "canEdit": false,
+                        "canLike": true,
+                        "likeCount": 1,
+                        "likedByMe": true,
+                        "dominantEmotionId": 1,
+                        "emotions": [
+                          {
+                            "emotionId": 1,
+                            "name": "기쁨",
+                            "colorHex": "#FFD54A",
+                            "count": 2
+                          },
+                          {
+                            "emotionId": 6,
+                            "name": "사랑",
+                            "colorHex": "#FF78AE",
+                            "count": 1
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "loginId": "새친구",
+                      "jar": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMITED",
+                    "message": "잠시 후 다시 시도해주세요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "알림"
+        ],
+        "summary": "내 통합 알림 페이지",
+        "description": "실제 FRIEND_REQUEST/JAR_LIKED 알림을 (createdAt DESC,id DESC)로 조회. GET은 읽음 변경 없음. 기준 알림 삭제에도 커서 경계 유지. 최신 알림은 첫 페이지 재조회. type 변경 시 cursor 리셋(다른 필터의 cursor 재사용은400). 일기 원문은 포함하지 않음.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "FRIEND_REQUEST",
+                "JAR_LIKED"
+              ]
+            },
+            "description": "생략하면 전체"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "정수 1~50. 저장 총량 한도가 아님"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "시간+ID를 포함한 불투명 nextCursor. 다음 페이지에 그대로 재전송"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "통합 목록 (예시는 type 생략)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPage"
+                },
+                "example": {
+                  "notifications": [
+                    {
+                      "id": "cmnotification0002",
+                      "type": "JAR_LIKED",
+                      "actor": {
+                        "loginId": "데모친구"
+                      },
+                      "target": {
+                        "type": "JAR",
+                        "id": "cmjar0001",
+                        "recordDate": "2026-09-24"
+                      },
+                      "createdAt": "2026-09-24T10:20:00.000Z",
+                      "readAt": null
+                    },
+                    {
+                      "id": "cmnotification0001",
+                      "type": "FRIEND_REQUEST",
+                      "actor": {
+                        "loginId": "새친구"
+                      },
+                      "target": {
+                        "type": "FRIEND_REQUEST",
+                        "id": "cmrequest0001"
+                      },
+                      "createdAt": "2026-09-24T09:00:00.000Z",
+                      "readAt": "2026-09-24T09:05:00.000Z"
+                    }
+                  ],
+                  "nextCursor": null,
+                  "hasMore": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/summary": {
+      "get": {
+        "tags": [
+          "알림"
+        ],
+        "summary": "종 배지 집계",
+        "description": "badgeCount=unreadLikeCount+pendingFriendRequestCount. 친구 요청을 읽어도 처리 전에는 pending수에 포함. 보이는 화면에서30초 간격, 재진입·종 열기 시 즉시 재조회(타이머는 프런트 구현).",
+        "responses": {
+          "200": {
+            "description": "배지",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSummary"
+                },
+                "example": {
+                  "unreadLikeCount": 2,
+                  "pendingFriendRequestCount": 1,
+                  "badgeCount": 3
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "description": "Notification ID. target.id와 다름",
+          "example": "cmnotification0002"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "알림"
+        ],
+        "summary": "내 알림 하나 읽음 처리 (두 타입 모두)",
+        "description": "요청 본문 없음. Content-Type도 생략 가능. 최초 readAt 유지. 반복호출도 같은 시각. 친구 요청 읽음은 수락/거절이 아니므로 pending 배지는 그대로. 이미 처리/취소로 삭제됐거나 타인의 알림은404.",
+        "responses": {
+          "200": {
+            "description": "읽음 확정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadNotification"
+                },
+                "example": {
+                  "id": "cmnotification0002",
+                  "readAt": "2026-09-24T10:21:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문·쿼리 형식 오류 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION",
+                    "message": "요청 형식이 올바르지 않아요."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "비로그인·만료·탈퇴 세션",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "로그인이 필요해요."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "내 알림이 없거나 타인의 알림",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "NOTIFICATION_NOT_FOUND",
+                    "message": "존재하지 않는 알림이에요."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "tags": [
+          "기타"
+        ],
+        "security": [],
+        "summary": "DB를 사용하지 않는 생존 확인",
+        "responses": {
+          "200": {
+            "description": "서버 응답",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "기타"
+        ],
+        "security": [],
+        "summary": "DB를 포함하는 준비 상태 확인",
+        "responses": {
+          "200": {
+            "description": "DB 연결 정상",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                },
+                "example": {
+                  "ok": true,
+                  "db": "up"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

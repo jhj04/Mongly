@@ -1,5 +1,7 @@
 import { loginIdTakenError, wrongPasswordError } from "../lib/errors";
 import { comparePassword, hashPassword } from "../lib/password";
+import { lockUsers } from "../lib/locks";
+import { prisma } from "../lib/prisma";
 import { isUniqueViolation } from "../lib/prismaError";
 import { userRepository } from "../repositories/userRepository";
 
@@ -31,6 +33,10 @@ export const userService = {
 
   async deleteAccount(userId: string, password: string) {
     await assertCurrentPassword(userId, password);
-    await userRepository.deleteById(userId); // Cascade로 유리병·친구 관계까지 정리
+    await prisma.$transaction(async (tx) => {
+      await lockUsers(tx, [userId]);
+      // 동시 탈퇴도 성공. Jar·친구·좋아요·알림은 FK cascade로 함께 정리한다.
+      await tx.user.deleteMany({ where: { id: userId } });
+    });
   },
 };

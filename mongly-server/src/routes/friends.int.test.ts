@@ -12,10 +12,6 @@ const uidB = `${uid}비`;
 const uidC = `${uid}씨`;
 const PW = "password123";
 
-// 1×1 투명 PNG — 완성하기 이미지 페이로드
-const TINY_PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-
 const app = createApp();
 const a = request.agent(app);
 const b = request.agent(app);
@@ -29,10 +25,10 @@ const signup = (agent: ReturnType<typeof request.agent>, nick: string, tag: stri
     termsAgreed: true,
   });
 
-// 유리병 완성 = 드래그 후 PNG와 함께 완성
+// 유리병 완성 = 드래그 후 선택 일기와 함께 완성
 async function makeJar(agent: ReturnType<typeof request.agent>, emotionId: number) {
   await agent.post("/api/jars/draft/emotions").send({ emotionId });
-  return agent.post("/api/jars").send({ image: `data:image/png;base64,${TINY_PNG_B64}` });
+  return agent.post("/api/jars").send({ note: "친구에게도 보이는 일기" });
 }
 
 // A→B 요청을 보내고 B가 수락 — 여러 describe에서 재사용하는 성립 헬퍼
@@ -160,7 +156,7 @@ describe("친구 요청 → 수락으로 성립", () => {
 });
 
 describe("친구 탭 — 친구별 최신 유리병 1개", () => {
-  it("GET /friends/jars — 친구마다 최신 유리병(imageUrl 포함), 없는 친구는 null", async () => {
+  it("GET /friends/jars — 친구마다 최신 유리병(일기·좋아요 상태 포함), 없는 친구는 null", async () => {
     // B: 어제 유리병(직접 삽입) + 오늘 유리병(API) 2개 → "최신"이 오늘 것인지 검증
     const bRow = await prisma.user.findUnique({ where: { loginId: uidB } });
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -180,13 +176,13 @@ describe("친구 탭 — 친구별 최신 유리병 1개", () => {
     const byLoginId = Object.fromEntries(res.body.friends.map((f: any) => [f.loginId, f.jar]));
     expect(byLoginId[uidB].id).toBe(todayJar.body.id); // 어제 것이 아닌 오늘(최신) 것
     expect(byLoginId[uidB].emotions[0]).toHaveProperty("colorHex");
-    expect(byLoginId[uidB].imageUrl).toBe(`/api/jars/${todayJar.body.id}/image`);
+    expect(byLoginId[uidB]).toMatchObject({ note: "친구에게도 보이는 일기", likeCount: 0, likedByMe: false, canLike: true, canEdit: false });
     expect(byLoginId[uidC]).toBeNull(); // 완성 안 한 친구 → 비활성 슬롯
 
-    // 친구는 유리병 PNG도 볼 수 있다 (선반 렌더)
-    const img = await a.get(byLoginId[uidB].imageUrl);
-    expect(img.status).toBe(200);
-    expect(img.headers["content-type"]).toContain("image/png");
+    // 상세에서도 같은 일기를 항상 읽을 수 있다.
+    const detail = await a.get(`/api/jars/${todayJar.body.id}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.note).toBe("친구에게도 보이는 일기");
   });
 });
 

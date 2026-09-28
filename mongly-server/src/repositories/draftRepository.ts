@@ -28,14 +28,17 @@ export const draftRepository = {
     return db.draftEmotion.create({ data: { userId, recordDate, emotionId } });
   },
 
-  // 되돌리기 — 오늘 드래프트 중 마지막(id 최대) 1행을 원자적으로 삭제. 삭제 행 수 반환(0이면 빈 병).
-  // 단일 SQL문이라 동시 되돌리기가 같은 행을 지우려는 경합이 없다(2단계 find→delete의 위험 제거).
+  // 되돌리기 — 오늘 드래프트 중 마지막(id 최대) 1행 삭제. 삭제 행 수 반환(0이면 빈 병).
+  // 같은 행을 고르는 동시 되돌리기는 서비스의 사용자 잠금으로 직렬화한다.
   async removeLast(userId: string, recordDate: Date, db: Db = prisma): Promise<number> {
+    // Prisma Date 파라미터는 timestamp로 전달될 수 있다. 날짜 문자열을 명시적으로 date로
+    // 비교해 DB 세션의 TimeZone(UTC/KST 등)에 따라 오늘 행이 누락되지 않도록 한다.
+    const dateOnly = recordDate.toISOString().slice(0, 10);
     const deleted = await db.$queryRaw<{ id: number }[]>`
       DELETE FROM "DraftEmotion"
       WHERE "id" = (
         SELECT "id" FROM "DraftEmotion"
-        WHERE "userId" = ${userId} AND "recordDate" = ${recordDate}
+        WHERE "userId" = ${userId} AND "recordDate" = ${dateOnly}::date
         ORDER BY "id" DESC LIMIT 1
       )
       RETURNING "id"

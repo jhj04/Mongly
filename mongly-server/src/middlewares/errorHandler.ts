@@ -34,6 +34,11 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     const message = err.status === 413 ? "요청 본문이 너무 커요." : "본문이 올바른 JSON이 아니에요.";
     return res.status(err.status).json({ error: { code: "INVALID_BODY", message } });
   }
-  console.error(err);
+  // Prisma errors can embed INSERT arguments, including a user's diary/password.
+  // Log only diagnostic classification, never the raw exception/message/query.
+  const name = err instanceof Error ? err.constructor.name : "UnknownError";
+  const code = err && typeof err === "object" && "code" in err &&
+    typeof err.code === "string" && /^P\d{4}$/.test(err.code) ? err.code : undefined;
+  console.error("Unhandled server error", { name, ...(code ? { code } : {}) });
   return res.status(500).json({ error: { code: "INTERNAL", message: "서버에 문제가 생겼어요." } });
 }

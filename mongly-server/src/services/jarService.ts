@@ -1,191 +1,241 @@
+import { Prisma } from "@prisma/client";
 import { AppError } from "../lib/errors";
+import { lockUsers } from "../lib/locks";
 import { prisma } from "../lib/prisma";
 import { isUniqueViolation } from "../lib/prismaError";
 import { draftRepository } from "../repositories/draftRepository";
-import { emotionRepository } from "../repositories/emotionRepository";
-import { friendRepository } from "../repositories/friendRepository";
 import { JarWithEmotions, jarRepository, withEmotions } from "../repositories/jarRepository";
+import { likeRepository } from "../repositories/likeRepository";
+import { CompleteJarInput, ListJarsQuery, UpdateJarInput } from "../schemas/jar";
 import { dominantEmotionId } from "../utils/dominant";
 import { getKstToday, kstDateToDb } from "../utils/kst";
+import { encodeCursor } from "../utils/pagination";
 
-export const JAR_LIMIT = 7; // 서재 최대 보관 개수
-export const DRAFT_LIMIT = 7; // 유리병에 담을 수 있는 감정 최대 개수
+export const DRAFT_LIMIT = 7; // 병 하나의 구슬 수. 서재의 저장 개수는 제한하지 않는다.
 
 const alreadyTodayError = () => new AppError(409, "JAR_ALREADY_TODAY", "오늘의 유리병은 이미 완성했어요.");
+const jarNotFoundError = () => new AppError(404, "JAR_NOT_FOUND", "존재하지 않는 유리병이에요.");
+const versionConflictError = (currentVersion: number) => new AppError(
+  409, "JAR_VERSION_CONFLICT", "다른 곳에서 기록이 수정됐어요. 최신 기록을 다시 확인해주세요.", { currentVersion },
+);
 
-// { emotionId, count } → 이름·색을 붙인 표준 감정 배열 + dominantEmotionId (유리병/드래프트 공용)
-async function enrich(counts: { emotionId: number; count: number }[]) {
-  if (counts.length === 0) return { emotions: [], dominantEmotionId: null };
-  const masters = await emotionRepository.findByIds(counts.map((c) => c.emotionId));
-  const emotions = masters // sortOrder 정렬 유지
-    .map((m) => ({
-      emotionId: m.id,
-      name: m.name,
-      colorHex: m.colorHex,
-      count: counts.find((c) => c.emotionId === m.id)!.count,
-    }));
-  return { emotions, dominantEmotionId: dominantEmotionId(emotions) };
+/** 모든 오늘 상태 변경/정리는 동일한 사용자 잠금을 사용하고, 잠금 후 날짜를 판정한다. */
+async function withOwnerTransaction<T>(
+  userId: string,
+  work: (tx: Prisma.TransactionClient, today: Date) => Promise<T>,
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await lockUsers(tx, [userId]);
+    if (!await tx.user.findUnique({ where: { id: userId }, select: { id: true } })) {
+      throw new AppError(401, "UNAUTHORIZED", "로그인이 필요해요.");
+    }
+    return work(tx, kstDateToDb(getKstToday()));
+  });
 }
 
-// 유리병 응답 (id·recordDate 포함)
-export function toJarResponse(jar: JarWithEmotions) {
-  const emotions = jar.emotions.map((je) => ({
-    emotionId: je.emotionId,
-    name: je.emotion.name,
-    colorHex: je.emotion.colorHex,
-    count: je.count,
+async function toDraftResponse(counts: { emotionId: number; count: number }[], tx: Prisma.TransactionClient) {
+  const masters = counts.length === 0 ? [] : await tx.emotion.findMany({
+    where: { id: { in: counts.map((count) => count.emotionId) } },
+    select: { id: true, name: true, colorHex: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  const byId = new Map(counts.map((count) => [count.emotionId, count.count]));
+  const emotions = masters.map((emotion) => ({
+    emotionId: emotion.id, name: emotion.name, colorHex: emotion.colorHex, count: byId.get(emotion.id)!,
   }));
   return {
-    id: jar.id,
-    recordDate: jar.recordDate.toISOString().slice(0, 10),
+    total: counts.reduce((total, count) => total + count.count, 0),
     dominantEmotionId: dominantEmotionId(emotions),
     emotions,
   };
 }
 
-// 드래프트(담는 중) 응답 — id·recordDate 없음, total 있음. 빈 병이면 total 0
-async function toDraftResponse(counts: { emotionId: number; count: number }[]) {
-  const { emotions, dominantEmotionId: dom } = await enrich(counts);
-  return {
-    total: counts.reduce((sum, c) => sum + c.count, 0),
-    dominantEmotionId: dom,
-    emotions,
-  };
+/** 이미 본인/친구 열람 권한을 확인한 병에 사용한다. 순서는 입력과 동일하다. */
+export async function toJarResponses(jars: JarWithEmotions[], viewerId: string, client?: Prisma.TransactionClient) {
+  if (jars.length === 0) return [];
+  const summaries = await likeRepository.summarize(jars.map((jar) => jar.id), viewerId, client);
+  const today = getKstToday();
+  return jars.map((jar) => {
+    const emotions = jar.emotions.map((emotion) => ({
+      emotionId: emotion.emotionId,
+      name: emotion.emotion.name,
+      colorHex: emotion.emotion.colorHex,
+      count: emotion.count,
+    }));
+    const isOwner = jar.userId === viewerId;
+    const recordDate = jar.recordDate.toISOString().slice(0, 10);
+    const likes = summaries.get(jar.id) ?? { likeCount: 0, likedByMe: false };
+    return {
+      id: jar.id,
+      recordDate,
+      note: jar.note,
+      createdAt: jar.createdAt.toISOString(),
+      updatedAt: jar.updatedAt.toISOString(),
+      version: jar.version,
+      dominantEmotionId: dominantEmotionId(emotions),
+      emotions,
+      ...likes,
+      canLike: !isOwner,
+      canEdit: isOwner && recordDate === today,
+    };
+  });
 }
 
 export const jarService = {
-  // 몽글리 탭 진입 — 오늘(KST) 상태를 한 번에. 완성본 있으면 draft:null, 없으면 담는 중 드래프트
   async getTodayState(userId: string) {
-    const today = kstDateToDb(getKstToday());
-    await draftRepository.clearStale(userId, today); // 어제 잔재 청소 (유계 유지)
-
-    const jar = await jarRepository.findByUserAndDate(userId, today);
-    if (jar) {
-      // 불변식: 완성본이 있으면 오늘 드래프트는 존재하지 않는다 — 남아있으면 정리
-      await draftRepository.clear(userId, today);
-      return { jar: toJarResponse(jar), draft: null };
-    }
-    return { jar: null, draft: await toDraftResponse(await draftRepository.aggregate(userId, today)) };
+    return withOwnerTransaction(userId, async (tx, today) => {
+      await draftRepository.clearStale(userId, today, tx);
+      const jar = await jarRepository.findByUserAndDate(userId, today, tx);
+      if (jar) {
+        await draftRepository.clear(userId, today, tx);
+        return { jar: (await toJarResponses([jar], userId, tx))[0], draft: null };
+      }
+      return { jar: null, draft: await toDraftResponse(await draftRepository.aggregate(userId, today, tx), tx) };
+    });
   },
 
-  // 드래그 1회 — 감정 1개 담기 (즉시 DB 반영). 응답 = 갱신된 드래프트 전체.
-  // 동시성 참고: 같은 유저의 담기/되돌리기를 병렬로 쏘면(더블탭) Read Committed에서
-  // count 검사·마지막 행 삭제에 경합이 있을 수 있다. 프론트가 뮤테이션을 직렬 전송하는 것을
-  // 계약(API.md)으로 삼고, 완성 시점의 total 1~7 재검증을 최종 백스톱으로 둔다.
   async addDraftEmotion(userId: string, emotionId: number) {
-    const today = kstDateToDb(getKstToday());
-    await draftRepository.clearStale(userId, today);
-
-    // 오늘 이미 완성했으면 담기 불가 (완성 직후 재드래그 차단).
-    // completeJar·getTodayState와 동일하게 잔재 드래프트를 정리해 "완성본 있으면 드래프트 없음" 불변식 통일
-    if (await jarRepository.findByUserAndDate(userId, today)) {
-      await draftRepository.clear(userId, today);
-      throw alreadyTodayError();
-    }
-
-    const found = await emotionRepository.findActiveByIds([emotionId]);
-    if (found.length === 0) throw new AppError(400, "INVALID_EMOTION", "존재하지 않는 감정이에요.");
-
-    const counts = await prisma.$transaction(async (tx) => {
-      const count = await draftRepository.count(userId, today, tx);
-      if (count >= DRAFT_LIMIT) {
+    const draft = await withOwnerTransaction(userId, async (tx, today) => {
+      await draftRepository.clearStale(userId, today, tx);
+      if (await jarRepository.findByUserAndDate(userId, today, tx)) {
+        await draftRepository.clear(userId, today, tx);
+        return null; // 잔재 청소는 커밋하고 호출자에게 409를 반환한다.
+      }
+      const emotion = await tx.emotion.findFirst({ where: { id: emotionId, isActive: true }, select: { id: true } });
+      if (!emotion) throw new AppError(400, "INVALID_EMOTION", "존재하지 않는 감정이에요.");
+      if (await draftRepository.count(userId, today, tx) >= DRAFT_LIMIT) {
         throw new AppError(409, "DRAFT_FULL", "감정은 최대 7개까지 담을 수 있어요.");
       }
       await draftRepository.add(userId, today, emotionId, tx);
-      return draftRepository.aggregate(userId, today, tx);
+      return toDraftResponse(await draftRepository.aggregate(userId, today, tx), tx);
     });
-    return toDraftResponse(counts);
+    if (!draft) throw alreadyTodayError();
+    return draft;
   },
 
-  // 되돌리기 — 마지막으로 담은 감정 1개 제거. 응답 = 갱신된 드래프트
   async undoDraftEmotion(userId: string) {
-    const today = kstDateToDb(getKstToday());
-    const removed = await draftRepository.removeLast(userId, today);
-    if (removed === 0) throw new AppError(409, "DRAFT_EMPTY", "되돌릴 감정이 없어요.");
-    return toDraftResponse(await draftRepository.aggregate(userId, today));
+    return withOwnerTransaction(userId, async (tx, today) => {
+      const removed = await draftRepository.removeLast(userId, today, tx);
+      if (removed === 0) throw new AppError(409, "DRAFT_EMPTY", "되돌릴 감정이 없어요.");
+      return toDraftResponse(await draftRepository.aggregate(userId, today, tx), tx);
+    });
   },
 
-  // 완성하기 — 서버에 저장된 오늘 드래프트를 확정해 유리병으로.
-  async completeJar(userId: string) {
-    const today = kstDateToDb(getKstToday());
-    await draftRepository.clearStale(userId, today);
-
-    // 오늘 이미 완성됨 → 드래프트는 무의미하므로 정리하고 409 (DB 불변식 유지)
-    if (await jarRepository.findByUserAndDate(userId, today)) {
-      await draftRepository.clear(userId, today);
-      throw alreadyTodayError();
-    }
-
+  async completeJar(userId: string, input: CompleteJarInput = {}) {
     try {
-      const jar = await prisma.$transaction(async (tx) => {
+      const jar = await withOwnerTransaction(userId, async (tx, today) => {
+        await draftRepository.clearStale(userId, today, tx);
+        if (await jarRepository.findByUserAndDate(userId, today, tx)) {
+          await draftRepository.clear(userId, today, tx);
+          return null;
+        }
         const counts = await draftRepository.aggregate(userId, today, tx);
-        const total = counts.reduce((sum, c) => sum + c.count, 0);
+        const total = counts.reduce((sum, count) => sum + count.count, 0);
         if (total === 0) throw new AppError(400, "DRAFT_EMPTY", "담은 감정이 없어요.");
-        // 더블탭 경합으로 7 초과가 된 극단 케이스 — 되돌리기로 맞추도록 안내
         if (total > DRAFT_LIMIT) {
           throw new AppError(409, "DRAFT_FULL", "감정이 너무 많아요. 되돌리기로 7개 이하로 맞춰주세요.");
         }
-
-        // 서재 7개 제한: 7개 이상이면 가장 오래된 유리병을 삭제하여 항상 최대 7개 유지 (FIFO)
-        const jarCount = await tx.jar.count({ where: { userId } });
-        if (jarCount >= JAR_LIMIT) {
-          const toDeleteCount = jarCount - JAR_LIMIT + 1;
-          const oldestJars = await tx.jar.findMany({
-            where: { userId },
-            orderBy: { recordDate: "asc" },
-            take: toDeleteCount,
-            select: { id: true },
-          });
-          if (oldestJars.length > 0) {
-            await tx.jar.deleteMany({
-              where: { id: { in: oldestJars.map((j) => j.id) } },
-            });
-          }
-        }
-
+        const now = new Date();
         const created = await tx.jar.create({
           data: {
-            userId,
-            recordDate: today,
-            emotions: { create: counts.map((c) => ({ emotionId: c.emotionId, count: c.count })) },
+            userId, recordDate: today, note: input.note ?? null, createdAt: now, updatedAt: now,
+            emotions: { create: counts.map((count) => ({ emotionId: count.emotionId, count: count.count })) },
           },
           include: withEmotions,
         });
-        await draftRepository.clear(userId, today, tx); // 완성됐으니 드래프트 비움
-        return created;
+        await draftRepository.clear(userId, today, tx);
+        return (await toJarResponses([created], userId, tx))[0];
       });
-      return toJarResponse(jar);
-    } catch (err) {
-      // 완성 직전 동시 완성(race)으로 (userId, today) 유니크 위반 → 오늘 완성됨. 드래프트 정리 후 409
-      if (isUniqueViolation(err)) {
-        await draftRepository.clear(userId, today);
-        throw alreadyTodayError();
-      }
-      throw err;
+      if (!jar) throw alreadyTodayError();
+      return jar;
+    } catch (error) {
+      if (isUniqueViolation(error)) throw alreadyTodayError();
+      throw error;
     }
   },
 
-  async listJars(userId: string) {
-    const jars = await jarRepository.findManyByUser(userId);
-    return jars.map(toJarResponse);
+  async listJars(userId: string, query: ListJarsQuery = { limit: 7 }) {
+    return prisma.$transaction(async (tx) => {
+      const rows = await jarRepository.findPageByUser(userId, query.limit, query.cursor ? kstDateToDb(query.cursor) : undefined, tx);
+      const hasMore = rows.length > query.limit;
+      const page = rows.slice(0, query.limit);
+      return {
+        jars: await toJarResponses(page, userId, tx),
+        nextCursor: hasMore ? encodeCursor({ v: 1, recordDate: page[page.length - 1].recordDate.toISOString().slice(0, 10) }) : null,
+        hasMore,
+      };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   },
 
-  // 상세 열람 — 본인 또는 친구만 (접근 제어)
   async getJarForViewer(viewerId: string, jarId: string) {
-    const jar = await jarRepository.findById(jarId);
-    if (!jar) throw new AppError(404, "JAR_NOT_FOUND", "존재하지 않는 유리병이에요.");
+    return prisma.$transaction(async (tx) => {
+      const jar = await jarRepository.findById(jarId, tx);
+      if (!jar) throw jarNotFoundError();
+      if (jar.userId !== viewerId && !await tx.friendship.findUnique({
+        where: { userId_friendId: { userId: viewerId, friendId: jar.userId } },
+      })) {
+        throw new AppError(403, "FORBIDDEN", "친구의 유리병만 볼 수 있어요.");
+      }
+      return (await toJarResponses([jar], viewerId, tx))[0];
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  },
 
-    if (jar.userId !== viewerId) {
-      const friendship = await friendRepository.find(viewerId, jar.userId);
-      if (!friendship) throw new AppError(403, "FORBIDDEN", "친구의 유리병만 볼 수 있어요.");
-    }
-    return toJarResponse(jar);
+  async updateJar(userId: string, jarId: string, input: UpdateJarInput) {
+    return withOwnerTransaction(userId, async (tx, today) => {
+      const jar = await jarRepository.findById(jarId, tx);
+      if (!jar) throw jarNotFoundError();
+      if (jar.userId !== userId) throw new AppError(403, "FORBIDDEN", "내 유리병만 수정할 수 있어요.");
+      if (jar.recordDate.getTime() !== today.getTime()) {
+        throw new AppError(409, "JAR_EDIT_WINDOW_CLOSED", "오늘의 유리병만 수정할 수 있어요.");
+      }
+      if (jar.version !== input.expectedVersion) throw versionConflictError(jar.version);
+
+      const previousCounts = new Map(jar.emotions.map((emotion) => [emotion.emotionId, emotion.count]));
+      if (input.emotions !== undefined) {
+        const masters = await tx.emotion.findMany({
+          where: { id: { in: input.emotions.map((emotion) => emotion.emotionId) } },
+          select: { id: true, isActive: true },
+        });
+        const byId = new Map(masters.map((emotion) => [emotion.id, emotion]));
+        for (const emotion of input.emotions) {
+          const master = byId.get(emotion.emotionId);
+          if (!master || (!master.isActive && emotion.count > (previousCounts.get(emotion.emotionId) ?? 0))) {
+            throw new AppError(400, "INVALID_EMOTION", "새 감정은 활성 감정만 사용할 수 있어요. 비활성 감정은 기존 개수 이하로 유지할 수 있어요.");
+          }
+        }
+      }
+      const note = input.note === undefined ? jar.note : input.note;
+      const sameEmotions = input.emotions === undefined || (
+        input.emotions.length === jar.emotions.length &&
+        input.emotions.every((emotion) => previousCounts.get(emotion.emotionId) === emotion.count)
+      );
+      if (note === jar.note && sameEmotions) return (await toJarResponses([jar], userId, tx))[0];
+
+      const updated = await tx.jar.updateMany({
+        where: { id: jarId, userId, version: input.expectedVersion },
+        data: { note, version: { increment: 1 }, updatedAt: new Date() },
+      });
+      if (updated.count !== 1) {
+        const current = await tx.jar.findUnique({ where: { id: jarId }, select: { version: true } });
+        if (!current) throw jarNotFoundError();
+        throw versionConflictError(current.version);
+      }
+      if (input.emotions !== undefined) {
+        await tx.jarEmotion.deleteMany({ where: { jarId } });
+        await tx.jarEmotion.createMany({ data: input.emotions.map((emotion) => ({ jarId, ...emotion })) });
+      }
+      const saved = await jarRepository.findById(jarId, tx);
+      if (!saved) throw jarNotFoundError();
+      return (await toJarResponses([saved], userId, tx))[0];
+    });
   },
 
   async deleteJar(userId: string, jarId: string) {
-    const jar = await jarRepository.findById(jarId);
-    if (!jar) throw new AppError(404, "JAR_NOT_FOUND", "존재하지 않는 유리병이에요.");
-    if (jar.userId !== userId) throw new AppError(403, "FORBIDDEN", "내 유리병만 삭제할 수 있어요.");
-    await jarRepository.deleteById(jarId);
+    await withOwnerTransaction(userId, async (tx) => {
+      const jar = await jarRepository.findById(jarId, tx);
+      if (!jar) throw jarNotFoundError();
+      if (jar.userId !== userId) throw new AppError(403, "FORBIDDEN", "내 유리병만 삭제할 수 있어요.");
+      await jarRepository.deleteById(jarId, tx);
+    });
   },
 };

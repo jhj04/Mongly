@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../lib/asyncHandler";
 import { requireAuth } from "../middlewares/auth";
 import { addDraftEmotionSchema } from "../schemas/draft";
+import { completeJarSchema, jarIdParamsSchema, listJarsQuerySchema, updateJarSchema } from "../schemas/jar";
 import { jarService } from "../services/jarService";
 
 export const jarsRouter = Router();
@@ -40,16 +41,18 @@ jarsRouter.delete(
 jarsRouter.post(
   "/jars",
   asyncHandler(async (req, res) => {
-    const jar = await jarService.completeJar(req.user!.id);
+    const input = completeJarSchema.parse(req.body ?? {});
+    const jar = await jarService.completeJar(req.user!.id, input);
     res.status(201).json(jar);
   }),
 );
 
-// 서재 — 내 유리병 목록 (최대 7개)
+// 서재 — 저장 개수 제한 없이 날짜순 페이지 조회 (기본 7개).
 jarsRouter.get(
   "/jars",
   asyncHandler(async (req, res) => {
-    res.json({ jars: await jarService.listJars(req.user!.id) });
+    const query = listJarsQuerySchema.parse(req.query);
+    res.json(await jarService.listJars(req.user!.id, query));
   }),
 );
 
@@ -57,7 +60,18 @@ jarsRouter.get(
 jarsRouter.get(
   "/jars/:id",
   asyncHandler(async (req, res) => {
-    res.json(await jarService.getJarForViewer(req.user!.id, req.params.id));
+    const { id } = jarIdParamsSchema.parse(req.params);
+    res.json(await jarService.getJarForViewer(req.user!.id, id));
+  }),
+);
+
+// 완성된 오늘 병 편집 — 감정 구성 전체 교체 및/또는 일기 변경.
+jarsRouter.patch(
+  "/jars/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = jarIdParamsSchema.parse(req.params);
+    const input = updateJarSchema.parse(req.body);
+    res.json(await jarService.updateJar(req.user!.id, id, input));
   }),
 );
 
@@ -65,7 +79,8 @@ jarsRouter.get(
 jarsRouter.delete(
   "/jars/:id",
   asyncHandler(async (req, res) => {
-    await jarService.deleteJar(req.user!.id, req.params.id);
+    const { id } = jarIdParamsSchema.parse(req.params);
+    await jarService.deleteJar(req.user!.id, id);
     res.json({ ok: true });
   }),
 );

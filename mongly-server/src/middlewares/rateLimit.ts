@@ -4,12 +4,13 @@ import { AppError } from "../lib/errors";
 // check-login-id·signup은 아이디 존재 여부가 새는 열거 오라클이라 rate limit이 완화책의 핵심
 // 로그인은 브루트포스, signup은 열거 + bcrypt CPU 소모 방지. 인증 구현과 동시에 적용 — 스트레치로 미루지 않는다.
 
-function limiter(limit: number) {
+function limiter(limit: number, perUser = false) {
   return rateLimit({
     windowMs: 60_000,
     limit,
     standardHeaders: true,
     legacyHeaders: false,
+    ...(perUser ? { keyGenerator: (req: import("express").Request) => req.user!.id } : {}),
     // 통합 테스트(INT=1, test:int 전용)는 supertest가 한 IP로 몰아쳐 한도에 오탐된다 — 판정만 끈다.
     // 정확히 "1"만 인정 + production 이중 가드: INT=0 같은 오설정이나 배포 env 오염으로 전 리미터가 조용히 꺼지는 것 방지
     skip: () => process.env.INT === "1" && process.env.NODE_ENV !== "production",
@@ -24,3 +25,5 @@ export const checkLoginIdLimiter = limiter(30); // 분당 30회 (타이핑 중 �
 // 친구 추가·친구 서재 조회도 404/403 응답 차이로 아이디 존재가 새는 오라클 — 인증 뒤라도 대량 열거는 막는다
 export const friendAddLimiter = limiter(10); // 분당 10회
 export const friendJarsLimiter = limiter(30); // 분당 30회 (친구 탭 넘겨보기 고려)
+// 반드시 requireAuth 뒤에 등록. PUT/DELETE가 같은 사용자별 분당 60회 한도를 공유한다.
+export const likeMutationLimiter = limiter(60, true);
