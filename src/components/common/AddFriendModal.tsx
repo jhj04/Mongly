@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
-import { glassSurface } from "@/lib/styles";
 import Button from "./Button";
 import TextField from "./TextField";
 import Portal from "./Portal";
@@ -19,7 +18,7 @@ export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFrie
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-        <div className={`w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary/10 text-primary-900 ${glassSurface}`}>
+        <div className="relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900">
           <button
             type="button"
             onClick={onClose}

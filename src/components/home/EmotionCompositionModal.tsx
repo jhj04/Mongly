@@ -33,7 +33,7 @@ export default function EmotionCompositionModal({
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-        <div className={`w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary/10 text-primary-900 ${glassSurface}`}>
+        <div className={`w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900 ${glassSurface}`}>
           <button
             type="button"
             onClick={onClose}
@@ -43,7 +43,7 @@ export default function EmotionCompositionModal({
             <PiX size={22} />
           </button>
 
-          <h2 className="relative z-10 text-center font-point text-2xl text-primary-800">감정 구성</h2>
+          <h2 className="relative z-10 text-center font-point text-2xl text-primary-900">감정 구성</h2>
           <p className="relative z-10 mt-3 text-center text-sm text-primary-900">{subtitle}</p>
 
           <div className="relative z-10 mt-10 flex flex-wrap justify-center gap-x-6 gap-y-6">

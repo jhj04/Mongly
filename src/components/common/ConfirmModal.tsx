@@ -1,7 +1,6 @@
 "use client";
 
 import { PiX } from "react-icons/pi";
-import { glassSurface } from "@/lib/styles";
 import Button from "./Button";
 import Portal from "./Portal";
 
@@ -36,7 +35,7 @@ export default function ConfirmModal({
         onClick={onClose}
       >
         <div
-          className={`relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary/10 text-primary-900 ${glassSurface}`}
+          className="relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900"
           onClick={(e) => e.stopPropagation()}
         >
           <button
