@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDeleteAccount } from "@/hooks/useUser";
+import { useLogout } from "@/hooks/useAuth";
 import { useSnackbar } from "@/components/common/SnackbarProvider";
 import Button from "@/components/common/Button";
 import TextField from "@/components/common/TextField";
@@ -13,6 +14,7 @@ import InfoSection from "@/components/settings/InfoSection";
 export default function SettingsPage() {
   const router = useRouter();
   const { deleteAccount, isLoading: isDeletingAccount } = useDeleteAccount();
+  const { logout, isLoading: isLoggingOut } = useLogout();
   const { showSnackbar } = useSnackbar();
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -23,6 +25,12 @@ export default function SettingsPage() {
     setIsDeleting(false);
     setDeletePassword("");
     setDeleteMessage("");
+  };
+
+  const handleLogout = async () => {
+    const { ok, error } = await logout();
+    showSnackbar(ok ? "로그아웃 되었습니다." : error?.message ?? "로그아웃에 실패했어요.");
+    router.push("/");
   };
 
   const handleConfirmDelete = async () => {
@@ -46,9 +54,17 @@ export default function SettingsPage() {
         <FriendsSection />
         <InfoSection />
 
-        {/* 하단 위험 구역 — 계정 삭제(되돌릴 수 없는 동작)만 분리. 로그아웃은 계정 섹션 하단에 있음 */}
+        {/* 하단 위험 구역 — 로그아웃과 계정 삭제(되돌릴 수 없는 동작)를 카드 밖으로 분리 */}
         <div className="mt-4 flex flex-col items-center gap-6">
-          <div className="w-full flex flex-col items-center gap-3 border-t border-white/25 pt-6">
+          <Button
+            label="로그아웃"
+            variant="outlined"
+            className="w-full"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          />
+
+          <div className="w-full flex flex-col items-center gap-3">
             {!isDeleting ? (
               <button
                 type="button"
