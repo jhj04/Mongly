@@ -37,8 +37,10 @@ export default function StaticJar({
         className={`object-contain ${glowClassName}`}
       />
 
-      {/* Jar.tsx의 interior 박스와 동일한 비율 — 구슬이 유리 안쪽에 담기도록 */}
-      <div className="absolute left-[27%] right-[30%] top-[19%] bottom-[11%]">
+      {/* Jar.tsx의 interior 박스와 동일한 비율 — 구슬이 유리 안쪽에 담기도록.
+          beadLayout.ts의 물리 계산이 이 43%/70% 비율을 기준으로 구슬 크기·간격을
+          잡으므로, Jar.tsx interior 박스 값이 바뀌면 여기도 같이 맞춰야 함 */}
+      <div className="absolute left-[27%] right-[30%] top-[19%] bottom-[11%] sm:left-[27%] sm:right-[30%] sm:top-[18%] sm:bottom-[11%]">
         {layout.map((bead) => (
           <div
             key={bead.id}
