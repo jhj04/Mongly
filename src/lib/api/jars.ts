@@ -25,6 +25,14 @@ export interface JarEmotionCount {
 export interface Jar {
   id: string;
   recordDate: string;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+  canEdit: boolean;
+  canLike: boolean;
+  likeCount: number;
+  likedByMe: boolean;
   dominantEmotionId: number | null;
   emotions: JarEmotionCount[];
 }
@@ -57,24 +65,58 @@ export const addDraftEmotion = (data: AddDraftEmotionRequest) =>
 export const removeDraftEmotion = () =>
   api.delete<JarDraft>("/api/jars/draft/emotions").then((res) => res.data);
 
+// 완성하기 — 오늘 드래프트를 유리병으로 확정하고 드래프트는 비움.
+// note는 선택(한 줄, 최대 50 grapheme). 담은 감정 없으면 DRAFT_EMPTY, 오늘 이미 완성했으면 JAR_ALREADY_TODAY
 export interface CompleteJarRequest {
-  // canvas.toDataURL('image/png') 값(순수 base64도 허용), 원본 1MB 이하
-  image: string;
+  note?: string | null;
 }
 
-// 완성하기 — 프론트가 렌더한 유리병 PNG와 함께 오늘 드래프트를 유리병으로 확정하고 드래프트는 비움.
-// 담은 감정 없으면 DRAFT_EMPTY, image 누락은 VALIDATION, PNG 아니거나 base64 오류는 IMAGE_INVALID(400)
-// 원본 1MB 초과는 IMAGE_TOO_LARGE(413)
-// 오늘 이미 완성했으면 JAR_ALREADY_TODAY, 서재가 가득 찼으면 JAR_LIMIT(409, details.jars에 현재 목록)
-export const completeJar = (data: CompleteJarRequest) =>
-  api.post<Jar>("/api/jars", data).then((res) => res.data);
+export const completeJar = (data?: CompleteJarRequest) =>
+  api.post<Jar>("/api/jars", data ?? {}).then((res) => res.data);
+
+// 오늘 유리병 수정 — 본인 소유 + KST 오늘 기록일 때만(canEdit). expectedVersion 필수.
+// note/emotions 중 하나 이상 필요. 버전 불일치는 409 JAR_VERSION_CONFLICT, 자정 지나면 409 JAR_EDIT_WINDOW_CLOSED
+export interface EditEmotionInput {
+  emotionId: number;
+  count: number;
+}
+
+export interface EditJarRequest {
+  expectedVersion: number;
+  note?: string | null;
+  emotions?: EditEmotionInput[];
+}
+
+export const editJar = (id: string, data: EditJarRequest) =>
+  api.patch<Jar>(`/api/jars/${id}`, data).then((res) => res.data);
+
+export interface LikeJarResponse {
+  jarId: string;
+  likeCount: number;
+  likedByMe: boolean;
+}
+
+// 좋아요 설정/취소(멱등) — 현재 친구의 병에만 가능(canLike). 분당 60회(설정+취소 합산) 제한.
+export const likeJar = (id: string) =>
+  api.put<LikeJarResponse>(`/api/jars/${id}/like`).then((res) => res.data);
+
+export const unlikeJar = (id: string) =>
+  api.delete<LikeJarResponse>(`/api/jars/${id}/like`).then((res) => res.data);
 
 export interface JarsListResponse {
   jars: Jar[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
-// 서재 — 내 유리병 목록(최대 7개, 날짜 내림차순)
-export const getJars = () => api.get<JarsListResponse>("/api/jars").then((res) => res.data);
+export interface GetJarsParams {
+  limit?: number;
+  cursor?: string;
+}
+
+// 서재 — 내 유리병 목록(날짜 내림차순, 저장 총량 무제한). 커서 기반 페이지네이션(limit 기본 7, 최대 50)
+export const getJars = (params?: GetJarsParams) =>
+  api.get<JarsListResponse>("/api/jars", { params }).then((res) => res.data);
 
 // 유리병 상세 — 본인 또는 친구만 조회 가능
 export const getJar = (id: string) => api.get<Jar>(`/api/jars/${id}`).then((res) => res.data);

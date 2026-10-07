@@ -10,8 +10,6 @@ import MongleCharacter from "./MongleCharacter";
 interface JarProps {
   jarRef: RefObject<HTMLDivElement | null>;
   interiorRef: RefObject<HTMLDivElement | null>;
-  /** 유리병+구슬만(배지·캐릭터 제외) 감싸는 영역 — PNG 캡처 시 이 ref 기준으로 잘라냄 */
-  captureRef?: RefObject<HTMLDivElement | null>;
   beads: PhysicsBead[];
   registerBeadEl: (id: string, el: HTMLDivElement | null) => void;
   count: number;
@@ -24,7 +22,6 @@ interface JarProps {
 export default function Jar({
   jarRef,
   interiorRef,
-  captureRef,
   beads,
   registerBeadEl,
   count,
@@ -50,8 +47,7 @@ export default function Jar({
           </span>
         </span>
 
-        {/* 배지·캐릭터는 빼고 유리병+구슬만 감싼 영역 — PNG 캡처 대상 */}
-        <div ref={captureRef} className="absolute inset-0">
+        <div className="absolute inset-0">
           <Image
             src="/images/bottle.png"
             alt="유리병"
@@ -62,7 +58,8 @@ export default function Jar({
           />
 
           {/* 실제 유리 내부 영역 근사치 — 물리 벽/구슬 렌더링 기준 좌표계
-              (bottle.png 실측: 몸통 좌우 166~590px, 어깨 상단 140px, 바닥 곡률 시작 680px / 782px 기준) */}
+              (bottle.png 실측: 몸통 좌우 166~590px, 어깨 상단 140px, 바닥 곡률 시작 680px / 782px 기준.
+              1024px로 리사이즈된 지금도 비율은 같아서 % 값 그대로 유효함) */}
           <div
             ref={interiorRef}
             className="absolute left-[27%] right-[30%] top-[19%] bottom-[11%] sm:left-[27%] sm:right-[30%] sm:top-[18%] sm:bottom-[11%] overflow-hidden"

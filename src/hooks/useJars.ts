@@ -10,11 +10,14 @@ import {
   getJars,
   getJar,
   deleteJar,
+  editJar,
+  likeJar,
+  unlikeJar,
   EmotionMaster,
   Jar,
   JarDraft,
   AddDraftEmotionRequest,
-  CompleteJarRequest,
+  EditJarRequest,
 } from "@/lib/api/jars";
 import { ApiError } from "@/lib/axios";
 
@@ -125,17 +128,18 @@ export function useRemoveDraftEmotion() {
   return { removeDraftEmotion: submit, isLoading, error };
 }
 
-// 완성하기 — 렌더한 유리병 PNG와 함께 오늘 드래프트를 유리병으로 확정. 서재가 가득 찼으면(JAR_LIMIT)
-// error.details.jars에 현재 서재 목록이 함께 내려옴(드래프트는 유지됨).
+// 완성하기 — 오늘 드래프트를 유리병으로 확정. 한 줄 일기 모달에서 호출.
+// note가 비어있으면 생략하고 전송(서버가 빈 문자열도 null로 처리하지만, 굳이 필드를 보내지 않음)
 export function useCompleteJar() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const submit = async (data: CompleteJarRequest) => {
+  const submit = async (note?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const jar = await completeJar(data);
+      const trimmed = note?.trim();
+      const jar = await completeJar(trimmed ? { note: trimmed } : undefined);
       return { jar, error: null as ApiError | null };
     } catch (e) {
       const apiError = toApiError(e);
@@ -149,7 +153,56 @@ export function useCompleteJar() {
   return { completeJar: submit, isLoading, error };
 }
 
-// 서재 — 내 유리병 목록(최대 7개, 날짜 내림차순)
+// 오늘 유리병의 한 줄 일기 수정 — 이번 스코프는 note만(emotions는 호출부에서 생략)
+export function useEditJar() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const submit = async (id: string, data: EditJarRequest) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const jar = await editJar(id, data);
+      return { jar, error: null as ApiError | null };
+    } catch (e) {
+      const apiError = toApiError(e);
+      setError(apiError);
+      return { jar: null, error: apiError };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { editJar: submit, isLoading, error };
+}
+
+// 친구 유리병 좋아요 토글 — 호출부(FriendsShelf)가 낙관적 업데이트 후 결과로 재조정함
+export function useLikeJar() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const submit = async (id: string, like: boolean) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = like ? await likeJar(id) : await unlikeJar(id);
+      return { result, error: null as ApiError | null };
+    } catch (e) {
+      const apiError = toApiError(e);
+      setError(apiError);
+      return { result: null, error: apiError };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { setLike: submit, isLoading, error };
+}
+
+// 서재 — 내 유리병 목록(날짜 내림차순, 저장 총량 무제한).
+// API는 커서 페이지네이션(최대 50개씩)이라 hasMore가 꺼질 때까지 이어서 불러와 전체 목록을 만듦.
+const GET_JARS_PAGE_LIMIT = 50;
+
 export function useJarsList() {
   const [jars, setJars] = useState<Jar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,8 +212,16 @@ export function useJarsList() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getJars();
-      setJars(result.jars);
+      let all: Jar[] = [];
+      let cursor: string | undefined;
+      let hasMore = true;
+      while (hasMore) {
+        const result = await getJars({ limit: GET_JARS_PAGE_LIMIT, cursor });
+        all = all.concat(result.jars);
+        hasMore = result.hasMore;
+        cursor = result.nextCursor ?? undefined;
+      }
+      setJars(all);
     } catch (e) {
       setError(toApiError(e));
     } finally {
