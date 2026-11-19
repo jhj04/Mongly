@@ -72,6 +72,7 @@ export default function Jar({
           active={isCharacterActive}
           ballEmotion={pendingEmotion}
           onDropComplete={onDropComplete}
+          anchorRef={jarRef}
         />
       </div>
     </div>
