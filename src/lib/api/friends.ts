@@ -36,6 +36,14 @@ export interface FriendJarEmotion {
 export interface FriendJar {
   id: string;
   recordDate: string;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+  canEdit: boolean;
+  canLike: boolean;
+  likeCount: number;
+  likedByMe: boolean;
   dominantEmotionId: number | null;
   emotions: FriendJarEmotion[];
 }

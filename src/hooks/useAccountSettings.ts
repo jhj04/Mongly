@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLogout, useMe } from "@/hooks/useAuth";
+import { useMe } from "@/hooks/useAuth";
 import {
   useCheckLoginId,
   useUpdateLoginId,
@@ -16,7 +16,6 @@ import { useSnackbar } from "@/components/common/SnackbarProvider";
 export function useAccountSettings() {
   const router = useRouter();
   const { user, isLoading: isLoadingMe } = useMe();
-  const { logout, isLoading: isLoggingOut } = useLogout();
   const { checkLoginId, isLoading: isCheckingLoginId } = useCheckLoginId();
   const { updateLoginId, isLoading: isSavingLoginId } = useUpdateLoginId();
   const { updatePassword, isLoading: isSavingPassword } = useUpdatePassword();
@@ -43,12 +42,6 @@ export function useAccountSettings() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user) setLoginId(user.loginId);
   }, [user]);
-
-  const handleLogout = async () => {
-    const { ok, error } = await logout();
-    showSnackbar(ok ? "로그아웃 되었습니다." : error?.message ?? "로그아웃에 실패했어요.");
-    router.push("/");
-  };
 
   const handleLoginIdChange = (value: string) => {
     setLoginId(value);
@@ -159,8 +152,5 @@ export function useAccountSettings() {
     isDeletingAccount,
     cancelDelete,
     handleConfirmDelete,
-
-    isLoggingOut,
-    handleLogout,
   };
 }

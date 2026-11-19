@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import type { Emotion } from "@/lib/emotions";
+import Portal from "@/components/common/Portal";
 
 interface MongleCharacterProps {
   /** true가 되면 등장 + 이동 애니메이션 재생 */
@@ -12,6 +13,8 @@ interface MongleCharacterProps {
   ballEmotion: Emotion | null;
   /** 병 위에서 구슬을 놓아 병 속으로 들어가는 시점 호출 */
   onDropComplete: () => void;
+  /** 캐릭터가 기준으로 삼을 유리병 컨테이너 — 이 박스 기준 좌표로 body에 포탈됨 */
+  anchorRef: RefObject<HTMLDivElement | null>;
 }
 
 // 캐릭터가 올라가는 데 걸리는 시간 (커질수록 더 느리게 떠오름)
@@ -28,8 +31,31 @@ export default function MongleCharacter({
   active,
   ballEmotion,
   onDropComplete,
+  anchorRef,
 }: MongleCharacterProps) {
   const ballControls = useAnimationControls();
+  const [anchorRect, setAnchorRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // 상단바가 포함된 main이 overflow-y-auto라 떠오르는 캐릭터가 그 위로 못 올라가고
+  // 잘려서 상단바 아래에 갇혀 보이는 문제가 있어, body에 포탈시켜 유리병 박스 위치만
+  // 픽셀 좌표로 따라가게 함 — 그러면 더 이상 main의 스크롤 영역에 잘리지 않음.
+  useLayoutEffect(() => {
+    if (!active) return;
+    const updateRect = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setAnchorRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+    };
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    return () => window.removeEventListener("resize", updateRect);
+  }, [active, anchorRef]);
 
   // 구슬을 놓는 완료 판정을 onAnimationComplete 콜백(브라우저 환경에 따라 씹히는 경우가
   // 있음) 대신, controls.start()가 반환하는 Promise가 실제로 resolve되는 시점으로 판정.
@@ -66,57 +92,69 @@ export default function MongleCharacter({
 
   return (
     <AnimatePresence>
-      {active && ballEmotion && (
-        <motion.div
-          key="mongle-character"
-          className="pointer-events-none absolute left-[62%] top-[8%] z-40 -translate-x-1/2 -translate-y-1/2"
-          initial={{ x: "-220%", y: "210%", opacity: 0, scale: 0.6 }}
-          animate={{
-            x: ["-220%", "-100%"],
-            y: ["210%", "-50%"],
-            opacity: [0, 1],
-            scale: [0.6, 1],
-          }}
-          exit={{
-            x: "-220%",
-            y: "210%",
-            opacity: 0,
-            scale: 0.6,
-            transition: { duration: EXIT_DURATION, ease: "easeIn" },
-          }}
-          transition={{ duration: RISE_DURATION, ease: "easeOut" }}
-        >
-          {/* 도착 후 날갯짓하듯 미세하게 위아래로 떠 있는 호버링 */}
-          <motion.div
-            className="relative"
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut", delay: RISE_DURATION }}
+      {active && ballEmotion && anchorRect && (
+        <Portal>
+          <div
+            className="pointer-events-none fixed z-50"
+            style={{
+              left: anchorRect.left,
+              top: anchorRect.top,
+              width: anchorRect.width,
+              height: anchorRect.height,
+            }}
           >
-            <Image
-              src="/images/characters/mongly_right.png"
-              alt="몽글리"
-              width={220}
-              height={220}
-              priority
-            />
-
-            {/* 품에 안은 구슬: 도착 후 짧게 떨어지다 유리에 부딪힌 듯 눌렸다 튕기며 사라짐 */}
             <motion.div
-              className="absolute h-12 w-12"
-              style={{ left: "62%", top: "50%" }}
-              initial={{ y: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
-              animate={ballControls}
+              key="mongle-character"
+              className="absolute left-[62%] top-[8%] -translate-x-1/2 -translate-y-1/2"
+              initial={{ x: "-220%", y: "210%", opacity: 0, scale: 0.6 }}
+              animate={{
+                x: ["-220%", "-100%"],
+                y: ["210%", "-50%"],
+                opacity: [0, 1],
+                scale: [0.6, 1],
+              }}
+              exit={{
+                x: "-220%",
+                y: "210%",
+                opacity: 0,
+                scale: 0.6,
+                transition: { duration: EXIT_DURATION, ease: "easeIn" },
+              }}
+              transition={{ duration: RISE_DURATION, ease: "easeOut" }}
             >
-              <Image
-                src={ballEmotion.image}
-                alt={ballEmotion.label}
-                fill
-                sizes="48px"
-                className="drop-shadow"
-              />
+              {/* 도착 후 날갯짓하듯 미세하게 위아래로 떠 있는 호버링 */}
+              <motion.div
+                className="relative"
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut", delay: RISE_DURATION }}
+              >
+                <Image
+                  src="/images/characters/mongly_right.png"
+                  alt="몽글리"
+                  width={220}
+                  height={220}
+                  priority
+                />
+
+                {/* 품에 안은 구슬: 도착 후 짧게 떨어지다 유리에 부딪힌 듯 눌렸다 튕기며 사라짐 */}
+                <motion.div
+                  className="absolute h-12 w-12"
+                  style={{ left: "62%", top: "50%" }}
+                  initial={{ y: 0, scaleX: 1, scaleY: 1, opacity: 1 }}
+                  animate={ballControls}
+                >
+                  <Image
+                    src={ballEmotion.image}
+                    alt={ballEmotion.label}
+                    fill
+                    sizes="48px"
+                    className="drop-shadow"
+                  />
+                </motion.div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </Portal>
       )}
     </AnimatePresence>
   );

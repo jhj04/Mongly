@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { PiHeart, PiHeartFill, PiPencilSimpleFill } from "react-icons/pi";
 import Button from "@/components/common/Button";
 import GradientMaskedImage from "@/components/common/GradientMaskedImage";
 import EmotionGradientBlob from "@/components/home/EmotionGradientBlob";
 import EmotionCompositionModal from "@/components/home/EmotionCompositionModal";
-import { buildEmotionConicGradient } from "@/lib/emotionGradient";
+import { buildEmotionMeshBlobs } from "@/lib/emotionMeshGradient";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { glassSurface } from "@/lib/styles";
 import type { JarEmotionCount } from "@/lib/api/jars";
 
 interface ShelfCharacterViewProps {
@@ -15,6 +18,16 @@ interface ShelfCharacterViewProps {
   dominantEmotionId: number | null;
   /** "돌아가기" — 선반 화면으로 복귀 */
   onBack: () => void;
+  /** 친구의 유리병일 때만 true — 내 병은 항상 false라 하트 버튼이 안 뜸 */
+  canLike?: boolean;
+  likedByMe?: boolean;
+  /** 화면엔 숫자를 표시하지 않고 접근성 레이블에만 사용 */
+  likeCount?: number;
+  isLikeLoading?: boolean;
+  onToggleLike?: () => void;
+  /** 한 줄 일기 — 없으면 수정 버튼을 숨김(친구 병이거나 작성한 일기가 없는 경우) */
+  note?: string | null;
+  onEditNote?: () => void;
 }
 
 // 서재·친구 탭에서 "캐릭터 보기"를 누르면 선반 대신 뜨는 화면.
@@ -24,8 +37,16 @@ export default function ShelfCharacterView({
   emotions,
   dominantEmotionId,
   onBack,
+  canLike = false,
+  likedByMe = false,
+  likeCount = 0,
+  isLikeLoading = false,
+  onToggleLike,
+  note,
+  onEditNote,
 }: ShelfCharacterViewProps) {
   const [showComposition, setShowComposition] = useState(false);
+  const isDesktop = useIsDesktop();
 
   return (
     <>
@@ -37,12 +58,14 @@ export default function ShelfCharacterView({
         style={{ backgroundPosition: "center calc(50%)" }}
       />
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-        {/* 결과 화면과 같은 회전 그라데이션을 캐릭터 뒤에 은은하게 깔아줌 */}
-        <div className="pointer-events-none absolute inset-0">
-          <EmotionGradientBlob emotions={emotions} />
-        </div>
+      {/* 결과 화면과 같은 회전 그라데이션을 캐릭터 뒤에 은은하게 깔아줌.
+          fixed + inset-0으로 화면 전체 기준 — flex-1 영역(버튼 줄만큼 줄어든 높이) 안에
+          넣으면 그 영역의 overflow-hidden에 블롭 아래쪽이 잘려 보임(결과 화면과 동일한 이유로 수정). */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <EmotionGradientBlob emotions={emotions} />
+      </div>
 
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         <motion.div
           className="relative z-10"
           initial={{ opacity: 0, scale: 0.85 }}
@@ -50,23 +73,55 @@ export default function ShelfCharacterView({
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
           <GradientMaskedImage
-            src="/images/characters/mongly_right.png"
-            gradient={buildEmotionConicGradient(emotions)}
+            className="translate-y-8"
+            src="/images/motions/monglytilt_sprite.png"
+            frameWidth={640}
+            frameHeight={640}
+            frameCount={30}
+            columns={6}
+            blobs={buildEmotionMeshBlobs(emotions)}
             alt="몽글리"
-            width={320}
-            height={320}
+            width={isDesktop ? 520 : 320}
+            height={isDesktop ? 520 : 320}
           />
         </motion.div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 px-6 pb-20 mt-auto">
+      <div className="flex items-center justify-between gap-3 sm:justify-center sm:gap-128 px-6 pb-20 mt-auto">
         <Button
           label="감정 구성 보기"
           variant="outlined"
           size="lg"
           onClick={() => setShowComposition(true)}
         />
-        <Button label="돌아가기" variant="filled" size="lg" onClick={onBack} />
+        <div className="flex flex-col items-end gap-3">
+          {note && onEditNote && (
+            <button
+              type="button"
+              aria-label="한 줄 일기 수정"
+              onClick={onEditNote}
+              className={`${glassSurface} relative z-30 flex-shrink-0 rounded-full p-3 bg-secondary/20 text-primary-900 transition-all active:scale-95`}
+            >
+              <span className="relative z-10 flex">
+                <PiPencilSimpleFill size={22} />
+              </span>
+            </button>
+          )}
+          {canLike && (
+            <button
+              type="button"
+              aria-label={likedByMe ? `좋아요 취소 (${likeCount})` : `좋아요 (${likeCount})`}
+              onClick={onToggleLike}
+              disabled={isLikeLoading}
+              className={`${glassSurface} relative z-30 flex-shrink-0 rounded-full p-3 bg-secondary/20 text-primary-900 transition-all active:scale-95 disabled:opacity-50`}
+            >
+              <span className="relative z-10 flex">
+                {likedByMe ? <PiHeartFill size={22} className="text-danger" /> : <PiHeart size={22} />}
+              </span>
+            </button>
+          )}
+          <Button label="돌아가기" variant="filled" size="lg" onClick={onBack} />
+        </div>
       </div>
 
       {showComposition && (

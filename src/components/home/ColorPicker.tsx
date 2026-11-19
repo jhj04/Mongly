@@ -89,7 +89,7 @@ export default function ColorPicker({
         <div
           ref={scrollRef}
           className={
-            "relative z-10 w-[236px] sm:w-auto -mt-[70vh] pt-[70vh] overflow-x-auto sm:overflow-x-visible " +
+            "relative z-10 w-[min(92vw,400px)] sm:w-auto -mt-[70vh] pt-[70vh] overflow-x-auto sm:overflow-x-visible " +
             "pointer-events-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           }
         >

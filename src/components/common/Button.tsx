@@ -1,5 +1,6 @@
 import React from "react";
-import { glassSurface, glassSolid } from "@/lib/styles";
+import { flatSurface, glassSolid } from "@/lib/styles";
+import { useSound } from "@/hooks/useSound";
 
 type ButtonVariant = "filled" | "outlined" | "danger";
 type ButtonSize = "lg" | "md" | "sm";
@@ -21,6 +22,13 @@ export default function Button({
   className = "",
   disabled = false,
 }: ButtonProps) {
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClick = () => {
+    playClickSound();
+    onClick?.();
+  };
+
   const base =
     "inline-flex items-center justify-center rounded-[2rem] font-point whitespace-nowrap transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none";
 
@@ -32,13 +40,13 @@ export default function Button({
 
   const styles: Record<ButtonVariant, string> = {
     filled: `${glassSolid} bg-primary-800/80 text-white`,
-    outlined: `${glassSurface} bg-secondary/10 text-primary-900`,
+    outlined: `${flatSurface} bg-secondary/20 text-neutral-900 border border-secondary-600`,
     danger: `${glassSolid} bg-danger/75 text-white`,
   };
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       className={`${base} ${sizes[size]} ${styles[variant]} ${className}`}
     >

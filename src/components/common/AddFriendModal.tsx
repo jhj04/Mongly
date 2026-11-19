@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
-import { glassSurface } from "@/lib/styles";
 import Button from "./Button";
 import TextField from "./TextField";
 import Portal from "./Portal";
+import { useSound } from "@/hooks/useSound";
 
 interface AddFriendModalProps {
   isLoading: boolean;
@@ -15,14 +15,20 @@ interface AddFriendModalProps {
 
 export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFriendModalProps) {
   const [loginId, setLoginId] = useState("");
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
+  };
 
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-        <div className={`w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary/10 text-primary-900 ${glassSurface}`}>
+        <div className="relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             className="absolute right-6 top-6 z-10 text-primary-900"
           >
@@ -30,7 +36,7 @@ export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFrie
           </button>
 
           <h2 className="relative z-10 text-center font-point text-2xl text-primary-800">친구 추가</h2>
-          <p className="relative z-10 mt-3 text-center text-sm text-primary-900">
+          <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">
             추가할 친구의 아이디를 입력해 주세요.
           </p>
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { PiX } from "react-icons/pi";
-import { glassSurface } from "@/lib/styles";
 import Button from "./Button";
 import Portal from "./Portal";
+import { useSound } from "@/hooks/useSound";
 
 interface ConfirmModalProps {
   title: string;
@@ -29,6 +29,13 @@ export default function ConfirmModal({
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
+  };
+
   return (
     <Portal>
       <div
@@ -36,12 +43,12 @@ export default function ConfirmModal({
         onClick={onClose}
       >
         <div
-          className={`relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary/10 text-primary-900 ${glassSurface}`}
+          className="relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             className="absolute right-6 top-6 z-10 text-primary-900"
           >
@@ -52,7 +59,7 @@ export default function ConfirmModal({
             {title}
           </h2>
           {message && (
-            <p className="relative z-10 mt-3 text-center text-sm text-primary-900">{message}</p>
+            <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">{message}</p>
           )}
 
           <div className="relative z-10 mt-8 flex gap-3">

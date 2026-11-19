@@ -26,7 +26,7 @@ export default function TextField({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center px-5 py-2 rounded-full gap-1 bg-secondary/80 shadow-drop">
+      <div className="flex items-center px-5 py-2 rounded-full gap-1 bg-secondary/80 shadow-drop border border-secondary-600">
         <input
           type={inputType}
           placeholder={label}
@@ -45,7 +45,7 @@ export default function TextField({
         )}
       </div>
       {helperText && (
-        <span className={`text-xs px-2 ${error ? "text-danger" : "text-accent"}`}>
+        <span className={`text-xs px-2 ${error ? "text-danger font-semibold" : "text-accent"}`}>
           {helperText}
         </span>
       )}

@@ -28,9 +28,6 @@ export default function AccountSection() {
     isSavingPassword,
     handleChangePassword,
 
-    isLoggingOut,
-    handleLogout,
-
     // 계정 삭제는 설정 페이지 하단(위험 구역)으로 이동 — 아래는 되돌릴 수 있게 남겨둠
     // isDeleting,
     // setIsDeleting,
@@ -121,16 +118,6 @@ export default function AccountSection() {
             {passwordMessage}
           </span>
         )}
-      </div>
-
-      {/* 로그아웃 — 원래 자리(계정 섹션 하단). 계정 삭제는 페이지 하단 위험 구역으로 분리됨 */}
-      <div className="flex justify-end mt-2">
-        <Button
-          label="로그아웃"
-          variant="outlined"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-        />
       </div>
     </section>
   );
