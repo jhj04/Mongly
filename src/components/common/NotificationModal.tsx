@@ -7,6 +7,7 @@ import FriendRequestList from "./FriendRequestList";
 import LikeNotificationList from "./LikeNotificationList";
 import type { FriendRequestItem } from "@/lib/api/friends";
 import type { JarLikedNotification } from "@/lib/api/notifications";
+import { useSound } from "@/hooks/useSound";
 
 type NotificationTab = "friend" | "like";
 
@@ -35,10 +36,17 @@ export default function NotificationModal({
   onClose,
 }: NotificationModalProps) {
   const [tab, setTab] = useState<NotificationTab>("friend");
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
 
   const selectTab = (next: NotificationTab) => {
+    playClickSound();
     setTab(next);
     if (next === "like") onOpenLikeTab();
+  };
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
   };
 
   return (
@@ -66,7 +74,7 @@ export default function NotificationModal({
           <div className="relative rounded-[2rem] rounded-tl-none px-8 py-10 bg-secondary text-primary-900">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="닫기"
               className="absolute right-6 top-6 z-10 text-primary-900"
             >

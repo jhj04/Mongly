@@ -6,6 +6,7 @@ import { glassSurface } from "@/lib/styles";
 import { findEmotionByEmotionId } from "@/lib/emotions";
 import type { JarEmotionCount } from "@/lib/api/jars";
 import Portal from "@/components/common/Portal";
+import { useSound } from "@/hooks/useSound";
 
 interface EmotionCompositionModalProps {
   emotions: JarEmotionCount[];
@@ -29,6 +30,12 @@ export default function EmotionCompositionModal({
   const subtitle = dominant
     ? `이번 기록은 ${dominant.name}${hasBatchim(dominant.name) ? "이" : "가"} 조금 더 많은 편이에요.`
     : "이번 기록엔 다양한 감정이 담겼어요.";
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
+  };
 
   return (
     <Portal>
@@ -36,7 +43,7 @@ export default function EmotionCompositionModal({
         <div className={`w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900 ${glassSurface}`}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             className="absolute right-6 top-6 z-10 text-primary-900"
           >

@@ -5,6 +5,7 @@ import { PiX } from "react-icons/pi";
 import Button from "./Button";
 import TextField from "./TextField";
 import Portal from "./Portal";
+import { useSound } from "@/hooks/useSound";
 
 interface AddFriendModalProps {
   isLoading: boolean;
@@ -14,6 +15,12 @@ interface AddFriendModalProps {
 
 export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFriendModalProps) {
   const [loginId, setLoginId] = useState("");
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
+  };
 
   return (
     <Portal>
@@ -21,7 +28,7 @@ export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFrie
         <div className="relative w-full max-w-md rounded-[2rem] px-8 py-10 bg-secondary text-primary-900">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             className="absolute right-6 top-6 z-10 text-primary-900"
           >

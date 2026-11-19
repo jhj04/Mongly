@@ -5,6 +5,7 @@ import { PiBell } from "react-icons/pi";
 import { glassSurface } from "@/lib/styles";
 import { useFriendRequests } from "@/hooks/useFriendRequests";
 import { useNotificationSummary, useLikeNotifications } from "@/hooks/useNotifications";
+import { useSound } from "@/hooks/useSound";
 import { useSnackbar } from "./SnackbarProvider";
 import NotificationModal from "./NotificationModal";
 
@@ -16,9 +17,11 @@ export default function NotificationBell() {
   const { badgeCount, unreadLikeCount, refetch: refetchSummary } = useNotificationSummary();
   const { notifications: likeNotifications, loadAndMarkRead } = useLikeNotifications();
   const { showSnackbar } = useSnackbar();
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
   const [open, setOpen] = useState(false);
 
   const handleOpen = () => {
+    playClickSound();
     setOpen(true);
     refetchRequests();
     refetchSummary();

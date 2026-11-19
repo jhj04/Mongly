@@ -5,6 +5,7 @@ import { PiX } from "react-icons/pi";
 import Button from "./Button";
 import Portal from "./Portal";
 import { countGraphemes, truncateToGraphemes, NOTE_MAX_GRAPHEMES } from "@/lib/text";
+import { useSound } from "@/hooks/useSound";
 
 export interface NoteModalProps {
   mode: "complete" | "edit";
@@ -31,6 +32,7 @@ export default function NoteModal({
 }: NoteModalProps) {
   const [note, setNote] = useState(initialNote);
   const count = countGraphemes(note);
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
 
   const handleChange = (value: string) => {
     setNote(countGraphemes(value) > NOTE_MAX_GRAPHEMES ? truncateToGraphemes(value, NOTE_MAX_GRAPHEMES) : value);
@@ -47,7 +49,10 @@ export default function NoteModal({
           {mode === "edit" && onClose && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                playClickSound();
+                onClose();
+              }}
               aria-label="닫기"
               className="absolute right-6 top-6 z-10 text-primary-900"
             >

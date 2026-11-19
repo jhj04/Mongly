@@ -3,6 +3,7 @@
 import { PiX } from "react-icons/pi";
 import Button from "./Button";
 import Portal from "./Portal";
+import { useSound } from "@/hooks/useSound";
 
 interface ConfirmModalProps {
   title: string;
@@ -28,6 +29,13 @@ export default function ConfirmModal({
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
+
+  const handleClose = () => {
+    playClickSound();
+    onClose();
+  };
+
   return (
     <Portal>
       <div
@@ -40,7 +48,7 @@ export default function ConfirmModal({
         >
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="닫기"
             className="absolute right-6 top-6 z-10 text-primary-900"
           >

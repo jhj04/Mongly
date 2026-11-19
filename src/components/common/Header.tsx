@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { glassSurface } from "@/lib/styles";
+import { useSound } from "@/hooks/useSound";
 import NotificationBell from "./NotificationBell";
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname();
+  const playClickSound = useSound("/audios/click_sound.mp3", { volume: 0.5 });
 
   return (
     <header className="w-full flex items-center justify-center gap-3 px-6 pt-6 sm:-translate-x-6">
@@ -30,6 +32,7 @@ export default function Header() {
           <Link
             key={item.label}
             href={item.href}
+            onClick={playClickSound}
             className={`relative z-10 flex-1 py-2 mx-2 sm:mx-5 text-center rounded-full text-md transition-all font-point ${
               pathname === item.href
                 ? "bg-primary text-primary-900 text-lg shadow-drop"
