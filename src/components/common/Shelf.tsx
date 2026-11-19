@@ -90,7 +90,7 @@ export default function Shelf({
         aria-label="이전 페이지"
         disabled={!hasPrev}
         onClick={() => goToPage(safePage - 1)}
-        className={`absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 z-10 ${navButton}`}
+        className={`!absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 z-10 ${navButton}`}
       >
         <span className="relative z-10 flex">
           <PiCaretLeftFill size={20} />
@@ -121,7 +121,7 @@ export default function Shelf({
         aria-label="다음 페이지"
         disabled={!hasNext}
         onClick={() => goToPage(safePage + 1)}
-        className={`absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 z-10 ${navButton}`}
+        className={`!absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 z-10 ${navButton}`}
       >
         <span className="relative z-10 flex">
           <PiCaretRightFill size={20} />

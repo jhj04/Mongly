@@ -122,20 +122,24 @@ export default function Home() {
         onDropComplete={handleDropComplete}
       />
 
-      <div className="flex items-center justify-center gap-4 px-6 pb-20 mt-auto">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-center gap-4 px-6 pb-20 mt-auto">
         <Button
+          className="order-2 sm:order-1"
           label="되돌리기"
           variant="outlined"
           size="lg"
           onClick={handleUndo}
           disabled={count === 0 || isDone}
         />
-        <ColorPicker
-          jarRef={jarRef}
-          disabled={isFull || isCharacterActive || isDone}
-          onDropSuccess={handleAddEmotion}
-        />
+        <div className="order-1 w-full sm:order-2 sm:w-auto">
+          <ColorPicker
+            jarRef={jarRef}
+            disabled={isFull || isCharacterActive || isDone}
+            onDropSuccess={handleAddEmotion}
+          />
+        </div>
         <Button
+          className="order-3"
           label="완료하기"
           variant="filled"
           size="lg"
