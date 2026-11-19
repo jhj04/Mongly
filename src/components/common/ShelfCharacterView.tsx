@@ -7,7 +7,8 @@ import Button from "@/components/common/Button";
 import GradientMaskedImage from "@/components/common/GradientMaskedImage";
 import EmotionGradientBlob from "@/components/home/EmotionGradientBlob";
 import EmotionCompositionModal from "@/components/home/EmotionCompositionModal";
-import { buildEmotionConicGradient } from "@/lib/emotionGradient";
+import { buildEmotionMeshBlobs } from "@/lib/emotionMeshGradient";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { glassSurface } from "@/lib/styles";
 import type { JarEmotionCount } from "@/lib/api/jars";
 
@@ -45,6 +46,7 @@ export default function ShelfCharacterView({
   onEditNote,
 }: ShelfCharacterViewProps) {
   const [showComposition, setShowComposition] = useState(false);
+  const isDesktop = useIsDesktop();
 
   return (
     <>
@@ -56,12 +58,14 @@ export default function ShelfCharacterView({
         style={{ backgroundPosition: "center calc(50%)" }}
       />
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-        {/* 결과 화면과 같은 회전 그라데이션을 캐릭터 뒤에 은은하게 깔아줌 */}
-        <div className="pointer-events-none absolute inset-0">
-          <EmotionGradientBlob emotions={emotions} />
-        </div>
+      {/* 결과 화면과 같은 회전 그라데이션을 캐릭터 뒤에 은은하게 깔아줌.
+          fixed + inset-0으로 화면 전체 기준 — flex-1 영역(버튼 줄만큼 줄어든 높이) 안에
+          넣으면 그 영역의 overflow-hidden에 블롭 아래쪽이 잘려 보임(결과 화면과 동일한 이유로 수정). */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <EmotionGradientBlob emotions={emotions} />
+      </div>
 
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         <motion.div
           className="relative z-10"
           initial={{ opacity: 0, scale: 0.85 }}
@@ -69,11 +73,16 @@ export default function ShelfCharacterView({
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
           <GradientMaskedImage
-            src="/images/characters/mongly_right.png"
-            gradient={buildEmotionConicGradient(emotions)}
+            className="translate-y-8"
+            src="/images/motions/monglytilt_sprite.png"
+            frameWidth={640}
+            frameHeight={640}
+            frameCount={30}
+            columns={6}
+            blobs={buildEmotionMeshBlobs(emotions)}
             alt="몽글리"
-            width={320}
-            height={320}
+            width={isDesktop ? 520 : 320}
+            height={isDesktop ? 520 : 320}
           />
         </motion.div>
       </div>

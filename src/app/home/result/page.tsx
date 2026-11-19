@@ -8,8 +8,9 @@ import GradientMaskedImage from "@/components/common/GradientMaskedImage";
 import EmotionCompositionModal from "@/components/home/EmotionCompositionModal";
 import EmotionGradientBlob from "@/components/home/EmotionGradientBlob";
 import { useTodayJar } from "@/hooks/useJars";
-import { buildEmotionConicGradient } from "@/lib/emotionGradient";
+import { buildEmotionMeshBlobs } from "@/lib/emotionMeshGradient";
 import { useSound } from "@/hooks/useSound";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 // 그라디언트가 빠르게 여러 바퀴 돌며 색이 섞이는 "로딩" 연출 시간(ms).
 // EmotionGradientBlob의 fast 스핀(0.5s * 3바퀴)과 길이를 맞춰서, 딱 한 바퀴 세트가
@@ -22,6 +23,7 @@ export default function JarResultPage() {
   const router = useRouter();
   const { jar, isLoading } = useTodayJar();
   const playIntroSound = useSound("/audios/0404-신비로운인트로.mp3", { volume: 0.5 });
+  const isDesktop = useIsDesktop();
 
   const [showComposition, setShowComposition] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -66,11 +68,16 @@ export default function JarResultPage() {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <GradientMaskedImage
-            src="/images/characters/mongly_right.png"
-            gradient={buildEmotionConicGradient(jar.emotions)}
+            className="translate-y-3"
+            src="/images/motions/monglytilt_sprite.png"
+            frameWidth={640}
+            frameHeight={640}
+            frameCount={30}
+            columns={6}
+            blobs={buildEmotionMeshBlobs(jar.emotions)}
             alt="몽글리"
-            width={360}
-            height={360}
+            width={isDesktop ? 520 : 360}
+            height={isDesktop ? 520 : 360}
           />
 
           <p className="text-center font-point text-xl text-primary-900">
