@@ -85,7 +85,7 @@ export default function NotificationModal({
               {tab === "friend" ? "친구 요청" : "좋아요"}
             </h2>
             {tab === "friend" && (
-              <p className="relative z-10 mt-3 text-center text-sm text-primary-900">
+              <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">
                 팔로우 요청이 도착했어요. 확인하거나 삭제해 주세요.
               </p>
             )}

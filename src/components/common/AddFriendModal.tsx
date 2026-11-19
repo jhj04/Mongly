@@ -36,7 +36,7 @@ export default function AddFriendModal({ isLoading, onSubmit, onClose }: AddFrie
           </button>
 
           <h2 className="relative z-10 text-center font-point text-2xl text-primary-800">친구 추가</h2>
-          <p className="relative z-10 mt-3 text-center text-sm text-primary-900">
+          <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">
             추가할 친구의 아이디를 입력해 주세요.
           </p>
 

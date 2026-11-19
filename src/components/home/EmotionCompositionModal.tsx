@@ -51,7 +51,7 @@ export default function EmotionCompositionModal({
           </button>
 
           <h2 className="relative z-10 text-center font-point text-2xl text-primary-900">감정 구성</h2>
-          <p className="relative z-10 mt-3 text-center text-sm text-primary-900">{subtitle}</p>
+          <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">{subtitle}</p>
 
           <div className="relative z-10 mt-10 flex flex-wrap justify-center gap-x-6 gap-y-6">
             {emotions.map((emotion) => {

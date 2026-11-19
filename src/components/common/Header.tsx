@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { glassSurface } from "@/lib/styles";
+import { flatSurface } from "@/lib/styles";
 import { useSound } from "@/hooks/useSound";
 import NotificationBell from "./NotificationBell";
 
@@ -25,9 +25,7 @@ export default function Header() {
         <Image src="/images/web_logo.png" alt="몽글리" width={120} height={54} className="h-15 w-auto" priority />
       </Link>
 
-      <nav
-        className={`${glassSurface} flex flex-1 max-w-2xl items-center rounded-full px-2 py-2 bg-secondary/20`}
-      >
+      <nav className={`${flatSurface} flex flex-1 max-w-2xl items-center rounded-full px-2 py-2 bg-secondary/20`}>
         {navItems.map((item) => (
           <Link
             key={item.label}
@@ -35,8 +33,8 @@ export default function Header() {
             onClick={playClickSound}
             className={`relative z-10 flex-1 py-2 mx-2 sm:mx-5 text-center rounded-full text-md transition-all font-point ${
               pathname === item.href
-                ? "bg-primary text-primary-900 text-lg shadow-drop"
-                : "text-primary-900 text-lg"
+                ? "bg-primary text-neutral-900 text-lg shadow-drop"
+                : "text-neutral-900 text-lg"
             }`}
           >
             {item.label}

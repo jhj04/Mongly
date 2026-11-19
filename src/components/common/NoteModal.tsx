@@ -61,7 +61,7 @@ export default function NoteModal({
           )}
 
           <h2 className="relative z-10 text-center font-point text-2xl text-primary-800">한 줄 일기</h2>
-          <p className="relative z-10 mt-3 text-center text-sm text-primary-900">
+          <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">
             {mode === "complete" ? "오늘의 일기를 한 줄로 완성해보세요." : "오늘의 한 줄 일기를 수정해보세요."}
           </p>
 

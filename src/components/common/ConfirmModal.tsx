@@ -59,7 +59,7 @@ export default function ConfirmModal({
             {title}
           </h2>
           {message && (
-            <p className="relative z-10 mt-3 text-center text-sm text-primary-900">{message}</p>
+            <p className="relative z-10 mt-3 text-center text-sm font-semibold text-primary-900">{message}</p>
           )}
 
           <div className="relative z-10 mt-8 flex gap-3">

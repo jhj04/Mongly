@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PiBell } from "react-icons/pi";
-import { glassSurface } from "@/lib/styles";
+import { flatSurface } from "@/lib/styles";
 import { useFriendRequests } from "@/hooks/useFriendRequests";
 import { useNotificationSummary, useLikeNotifications } from "@/hooks/useNotifications";
 import { useSound } from "@/hooks/useSound";
@@ -54,7 +54,7 @@ export default function NotificationBell() {
         type="button"
         aria-label="알림"
         onClick={handleOpen}
-        className={`${glassSurface} relative flex-shrink-0 rounded-full p-3 bg-secondary/20 text-primary-900`}
+        className={`${flatSurface} flex-shrink-0 rounded-full p-3 bg-secondary/20 text-primary-900`}
       >
         <span className="relative z-10 flex">
           <PiBell size={22} />

@@ -1,5 +1,5 @@
 import React from "react";
-import { glassSurface, glassSolid } from "@/lib/styles";
+import { flatSurface, glassSolid } from "@/lib/styles";
 import { useSound } from "@/hooks/useSound";
 
 type ButtonVariant = "filled" | "outlined" | "danger";
@@ -40,7 +40,7 @@ export default function Button({
 
   const styles: Record<ButtonVariant, string> = {
     filled: `${glassSolid} bg-primary-800/80 text-white`,
-    outlined: `${glassSurface} bg-secondary/10 text-primary-900`,
+    outlined: `${flatSurface} bg-secondary/20 text-neutral-900 border border-secondary-600`,
     danger: `${glassSolid} bg-danger/75 text-white`,
   };
 
